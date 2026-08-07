@@ -1,0 +1,19 @@
+{
+  "name": "ruusian-retro-emulator",
+  "version": "1.0.0",
+  "description": "Retro NES emulator by Ruusian",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "stop": "lsof -ti :3000 | xargs -r kill -9 2>/dev/null || pkill -f 'node server.js' 2>/dev/null || true"
+  },
+  "dependencies": {
+    "compression": "^1.8.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.3.0",
+    "morgan": "^1.11.0",
+    "multer": "^2.2.0"
+  }
+}

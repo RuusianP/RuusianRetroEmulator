@@ -1,0 +1,2791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ruusian Retro Web Emulator</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <style>
+    :root {
+      --bg: #060a16;
+      --bg-alt: #0b1328;
+      --panel: rgba(12, 20, 42, 0.85);
+      --panel-alt: rgba(16, 28, 55, 0.9);
+      --border: rgba(255,255,255,.06);
+      --accent: #38bdf8;
+      --accent-dim: rgba(56,189,248,.15);
+      --accent-glow: rgba(56,189,248,.2);
+      --accent-strong: #7dd3fc;
+      --text: #e9f2ff;
+      --muted: #8899c7;
+      --danger: #fb7185;
+      --success: #4ade80;
+      --gold: #fbbf24;
+      --radius-sm: 10px;
+      --radius-md: 16px;
+      --radius-lg: 22px;
+      --radius-xl: 26px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    body {
+      padding: 24px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    #starfield {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 10%, rgba(56,189,248,.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 90%, rgba(168,85,247,.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(6,10,22,1) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page-shell {
+      position: relative;
+      z-index: 1;
+      max-width: 1320px;
+      margin: 0 auto;
+      display: grid;
+      gap: 20px;
+    }
+
+    .title-block h1 {
+      margin: 0 0 6px;
+      font-size: clamp(2rem, 3.6vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #f8fbff 0%, #7dd3fc 25%, #38bdf8 50%, #a78bfa 75%, #f8fbff 100%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.15;
+      animation: shimmer 4s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% center; }
+      50% { background-position: 100% center; }
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .title-block p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 700px;
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+
+    .brand-note {
+      color: rgba(136,153,199,.7);
+      font-size: 0.85rem;
+      margin-top: 6px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: rgba(56,189,248,.08);
+      border: 1px solid rgba(56,189,248,.15);
+      color: var(--accent-strong);
+      font-size: 0.85rem;
+      font-weight: 500;
+      white-space: nowrap;
+      backdrop-filter: blur(12px);
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    .status-chip {
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(56,189,248,.08);
+      background: rgba(255,255,255,.02);
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.85rem;
+      backdrop-filter: blur(8px);
+      transition: background .2s, border-color .2s, transform .2s;
+    }
+
+    .status-chip:hover {
+      background: rgba(56,189,248,.05);
+      border-color: rgba(56,189,248,.15);
+      transform: translateY(-1px);
+    }
+
+    .status-chip strong {
+      font-size: 0.82rem;
+      color: var(--text);
+      font-weight: 500;
+      opacity: 0.8;
+    }
+
+    .status-chip span {
+      color: var(--accent-strong);
+      font-weight: 600;
+      font-size: 0.88rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(300px, 380px) 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,.05);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      position: relative;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 32px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
+    }
+
+    .panel-header {
+      padding: 20px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      gap: 12px;
+    }
+
+    .panel-header h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f0f4ff;
+      letter-spacing: 0.01em;
+    }
+
+    .panel-body {
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+
+    .card {
+      background: var(--panel-alt);
+      border: 1px solid rgba(255,255,255,.04);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+      transition: border-color .2s;
+    }
+
+    .card:hover {
+      border-color: rgba(56,189,248,.08);
+    }
+
+    .card-heading {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      color: #dce8ff;
+      font-size: 0.92rem;
+    }
+
+    .card-heading small {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .file-select {
+      display: grid;
+      gap: 10px;
+    }
+
+    .upload-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 20px;
+      border-radius: var(--radius-md);
+      border: none;
+      font-weight: 600;
+      color: #061b34;
+      background: linear-gradient(135deg, #38bdf8, #60a5fa);
+      cursor: pointer;
+      transition: transform .15s, box-shadow .2s, filter .2s;
+    }
+
+    .upload-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(56,189,248,.25);
+      filter: brightness(1.08);
+    }
+
+    .upload-button:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    .hidden-file {
+      position: absolute;
+      left: -9999px;
+      top: -9999px;
+    }
+
+    .search-field,
+    .save-input,
+    .input-field {
+      width: 100%;
+      min-height: 44px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255,255,255,.06);
+      background: rgba(6,10,22,.8);
+      color: var(--text);
+      padding: 0 14px;
+      outline: none;
+      font-size: 0.9rem;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .search-field:focus,
+    .save-input:focus,
+    .input-field:focus {
+      border-color: rgba(56,189,248,.3);
+      box-shadow: 0 0 0 3px rgba(56,189,248,.08);
+    }
+
+    .search-field::placeholder,
+    .save-input::placeholder {
+      color: rgba(233,242,255,.35);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .toggle-btn,
+    .action-btn {
+      border: 1px solid rgba(56,189,248,.15);
+      background: rgba(6,10,22,.9);
+      color: var(--text);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: background .15s, border-color .15s, transform .15s, box-shadow .15s;
+      white-space: nowrap;
+    }
+
+    .toggle-btn:hover,
+    .action-btn:hover {
+      background: rgba(56,189,248,.08);
+      border-color: rgba(56,189,248,.25);
+      transform: translateY(-1px);
+    }
+
+    .toggle-btn:disabled,
+    .action-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      background: rgba(255,255,255,.04);
+      border-color: rgba(255,255,255,.04);
+      color: rgba(233,242,255,.4);
+      transform: none;
+    }
+
+    .toggle-btn.active,
+    .action-btn.primary {
+      background: linear-gradient(135deg, #38bdf8, #60a5fa);
+      border-color: transparent;
+      color: #071a2e;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(56,189,248,.2);
+    }
+
+    .toggle-btn.active:hover,
+    .action-btn.primary:hover {
+      box-shadow: 0 6px 24px rgba(56,189,248,.3);
+      filter: brightness(1.05);
+    }
+
+    .control-group {
+      display: grid;
+      gap: 12px;
+    }
+
+    .rom-list,
+    .saves-list {
+      display: grid;
+      gap: 8px;
+      max-height: 320px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .rom-list::-webkit-scrollbar,
+    .saves-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .rom-list::-webkit-scrollbar-track,
+    .saves-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .rom-list::-webkit-scrollbar-thumb,
+    .saves-list::-webkit-scrollbar-thumb {
+      background: rgba(56,189,248,.15);
+      border-radius: 99px;
+    }
+
+    .rom-item,
+    .save-item {
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255,255,255,.04);
+      padding: 12px 14px;
+      background: rgba(6,10,22,.6);
+      color: #d9e6ff;
+      text-align: left;
+      cursor: pointer;
+      transition: transform .12s, background .15s, border-color .15s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .rom-item:hover,
+    .save-item:hover {
+      transform: translateY(-1px);
+      background: rgba(56,189,248,.06);
+      border-color: rgba(56,189,248,.12);
+    }
+
+    .rom-item .rom-mapper {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(56,189,248,.1);
+      color: var(--accent-strong);
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      margin-left: 6px;
+    }
+
+    .rom-item .rom-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .rom-item .rom-badge.supported {
+      background: rgba(74,222,128,.1);
+      color: var(--success);
+    }
+
+    .rom-item .rom-badge.unsupported {
+      background: rgba(251,113,133,.1);
+      color: var(--danger);
+    }
+
+    .save-item .slot-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.88rem;
+    }
+
+    .save-item .save-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .save-item .save-actions button {
+      padding: 4px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.06);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.78rem;
+      transition: background .12s, border-color .12s;
+    }
+
+    .save-item .save-actions .load-save:hover {
+      background: rgba(56,189,248,.15);
+      border-color: rgba(56,189,248,.2);
+    }
+
+    .save-item .save-actions .delete-save:hover {
+      background: rgba(251,113,133,.15);
+      border-color: rgba(251,113,133,.2);
+    }
+
+    .save-list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .save-list-header .refresh-btn {
+      padding: 4px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.06);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.78rem;
+      transition: background .12s, color .12s;
+    }
+
+    .save-list-header .refresh-btn:hover {
+      background: rgba(56,189,248,.1);
+      color: var(--accent-strong);
+    }
+
+    .guide-content {
+      display: grid;
+      gap: 12px;
+      font-size: 0.88rem;
+      color: #d5e0ff;
+      line-height: 1.6;
+    }
+
+    .guide-content table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .guide-content th, .guide-content td {
+      padding: 5px 8px;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      text-align: left;
+    }
+
+    .guide-content th {
+      color: var(--accent-strong);
+      font-weight: 500;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .guide-content kbd {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1);
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.78rem;
+    }
+
+    .mod-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(6,10,22,.6);
+      border: 1px solid rgba(255,255,255,.05);
+      margin-top: 10px;
+    }
+
+    .mod-info { display: flex; flex-direction: column; gap: 2px; }
+
+    .mod-name { font-size: 0.86rem; color: var(--text); font-weight: 500; }
+
+    .mod-desc { font-size: 0.72rem; color: var(--muted); }
+
+    .mod-row .switch {
+      appearance: none;
+      width: 44px;
+      height: 24px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.15);
+      position: relative;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background .2s;
+      margin: 0;
+    }
+
+    .mod-row .switch:checked { background: var(--accent); }
+
+    .mod-row .switch::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform .2s;
+    }
+
+    .mod-row .switch:checked::after { transform: translateX(20px); }
+
+    .guide-section-title {
+      color: var(--accent-strong);
+      font-weight: 500;
+      font-size: 0.88rem;
+    }
+
+    .main-canvas {
+      background: radial-gradient(ellipse at center, rgba(56,189,248,.06), transparent 70%),
+                  linear-gradient(180deg, #050812 0%, #02050d 100%);
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(255,255,255,.05);
+      overflow: hidden;
+      min-height: 380px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      isolation: isolate;
+      transition: border-color .3s, box-shadow .3s;
+    }
+
+    .main-canvas.drag-over {
+      border-color: #77d7ff;
+      box-shadow: 0 0 40px rgba(119,215,255,.15);
+    }
+
+    .main-canvas:has(canvas) {
+      border-color: rgba(56,189,248,.08);
+      box-shadow: 0 0 60px rgba(56,189,248,.04);
+    }
+
+    .main-canvas canvas,
+    .main-canvas .placeholder {
+      width: 100%;
+      height: 100%;
+      min-height: 380px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      will-change: transform;
+    }
+
+    .game-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+      justify-content: flex-end;
+    }
+
+    .game-toolbar .action-btn {
+      min-width: 100px;
+      padding: 10px 14px;
+    }
+
+    .touch-controls {
+      position: absolute;
+      inset: 0;
+      display: none;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 16px;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .main-canvas.touch-controls-visible .touch-controls {
+      display: flex;
+    }
+
+    .touch-cluster {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      pointer-events: auto;
+    }
+
+    .touch-btn {
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(6,10,22,.65);
+      color: var(--text);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      min-width: 52px;
+      min-height: 46px;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      touch-action: none;
+      user-select: none;
+      font-size: 0.85rem;
+      transition: transform .1s, background .12s, border-color .12s;
+    }
+
+    .touch-btn:active,
+    .touch-btn.active {
+      transform: scale(0.95);
+      background: linear-gradient(135deg, #38bdf8, #60a5fa);
+      border-color: transparent;
+      color: #071a2e;
+      box-shadow: 0 4px 16px rgba(56,189,248,.25);
+    }
+
+    .touch-btn.action-btn-wide {
+      min-width: 68px;
+      font-size: 0.78rem;
+    }
+
+    .touch-dpad {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(46px, 52px));
+      gap: 6px;
+    }
+
+    .touch-dpad .touch-btn:nth-child(2) { grid-column: 2; }
+    .touch-dpad .touch-btn:nth-child(4) { grid-column: 1; }
+    .touch-dpad .touch-btn:nth-child(5) { grid-column: 3; }
+    .touch-dpad .touch-btn.up { grid-column: 2; }
+    .touch-dpad .touch-btn.down { grid-column: 2; }
+
+    .placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      color: rgba(233,242,255,.8);
+      font-size: 1rem;
+    }
+
+    .placeholder-welcome {
+      max-width: 580px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .hero-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      background: linear-gradient(135deg, #f8fbff, #7dd3fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-subtitle {
+      color: rgba(233,242,255,.65);
+      line-height: 1.65;
+      font-size: 0.92rem;
+      margin: 0 auto;
+    }
+
+    .hero-actions {
+      color: rgba(56,189,248,.8);
+      font-size: 0.88rem;
+      letter-spacing: 0.01em;
+    }
+
+    .status-panel {
+      display: grid;
+      gap: 10px;
+    }
+
+    .mini-card {
+      padding: 14px 16px;
+      border-radius: var(--radius-md);
+      background: rgba(255,255,255,.02);
+      border: 1px solid rgba(255,255,255,.04);
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: #d7e2ff;
+      font-size: 0.88rem;
+    }
+
+    .mini-card strong {
+      color: #f0f4ff;
+      font-weight: 500;
+    }
+
+    #status {
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      background: rgba(6,10,22,.6);
+      border: 1px solid rgba(255,255,255,.04);
+      color: var(--text);
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      font-size: 0.85rem;
+      position: relative;
+      overflow: hidden;
+      transition: background .2s, border-color .2s;
+    }
+
+    #status::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), var(--success), transparent);
+      background-size: 200% 100%;
+      opacity: 0.3;
+      animation: shimmer 3s ease-in-out infinite;
+    }
+
+    .main-canvas.running {
+      border-color: rgba(56,189,248,.2);
+      box-shadow: 0 0 60px rgba(56,189,248,.08);
+    }
+
+    .game-hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 14px;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .game-hud.visible {
+      opacity: 1;
+    }
+
+    .game-hud-item {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: rgba(255,255,255,.7);
+      background: rgba(0,0,0,.5);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      padding: 3px 10px;
+      border-radius: 6px;
+      letter-spacing: 0.03em;
+    }
+
+    .search-field {
+      transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s;
+    }
+
+    .search-field:focus {
+      box-shadow: 0 0 0 3px rgba(56,189,248,.08), inset 0 2px 6px rgba(0,0,0,.2);
+    }
+
+    .save-list-header button.refresh-btn {
+      transition: transform 0.3s ease;
+    }
+
+    .save-list-header button.refresh-btn:hover {
+      transform: rotate(180deg);
+    }
+
+    .status-chip strong {
+      transition: color 0.25s ease;
+    }
+
+    .status-chip:hover strong {
+      color: var(--accent-strong);
+    }
+
+    .toggle-btn, .action-btn {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 60%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(56,189,248,.2), transparent);
+      transition: left 0.6s ease;
+      pointer-events: none;
+    }
+
+    .card:hover::after {
+      left: 200%;
+    }
+
+    .guide-section-title {
+      transition: color 0.25s ease;
+    }
+
+    .guide-section-title:hover {
+      color: var(--accent-strong);
+    }
+
+    #romList::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, var(--accent-dim), rgba(56,189,248,.08));
+      border-radius: 4px;
+    }
+
+    @media (max-width: 720px) {
+      .page-shell > .header,
+      .page-shell > .status-grid,
+      .page-shell > .grid {
+        animation: none;
+      }
+    }
+
+    #gridOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.15;
+      background: rgba(56,189,248,.02);
+    }
+
+    #gameViewport {
+      transition: box-shadow 0.4s, border-color 0.4s;
+    }
+
+    #customTooltip {
+      position: fixed;
+      z-index: 99999;
+      pointer-events: none;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: #f0f8ff;
+      background: rgba(8,14,32,.92);
+      border: 1px solid rgba(56,189,248,.15);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px rgba(0,0,0,.5), 0 0 0 1px rgba(56,189,248,.05);
+      opacity: 0;
+      transform: translateY(4px) scale(0.96);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      white-space: nowrap;
+    }
+
+    #customTooltip.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .hud-fps-fine   { color: #4ade80 !important; }
+    .hud-fps-ok     { color: #fbbf24 !important; }
+    .hud-fps-poor   { color: #fb7185 !important; animation: fpsWarn 0.5s ease-in-out infinite alternate; }
+
+    @keyframes fpsWarn {
+      from { opacity: 0.7; }
+      to   { opacity: 1; }
+    }
+
+    .control-glow {
+      animation: controlPulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes controlPulse {
+      0%, 100% { text-shadow: 0 0 4px rgba(56,189,248,.2); }
+      50%      { text-shadow: 0 0 16px rgba(56,189,248,.5), 0 0 32px rgba(56,189,248,.15); }
+    }
+
+    #pauseOverlay {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at center, rgba(6,10,22,.7), rgba(6,10,22,.85));
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+
+    #pauseOverlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #pauseOverlay span {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #7dd3fc, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      opacity: 0.8;
+      text-shadow: 0 0 60px rgba(56,189,248,.15);
+    }
+
+    .guide-section-title {
+      position: relative;
+      padding-left: 14px;
+    }
+
+    .guide-section-title::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 4px;
+      bottom: 4px;
+      width: 3px;
+      border-radius: 2px;
+      background: linear-gradient(180deg, var(--accent), rgba(56,189,248,.1));
+    }
+
+    table kbd {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: rgba(56,189,248,.08);
+      border: 1px solid rgba(56,189,248,.12);
+      font-family: inherit;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--accent-strong);
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+      margin: 1px 2px;
+    }
+
+    table tr {
+      transition: background 0.2s;
+    }
+
+    table tr:hover td {
+      color: var(--text);
+    }
+
+    #savesList > div {
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    #savesList > div:hover {
+      transform: translateX(3px);
+      border-color: rgba(56,189,248,.15);
+      background: rgba(56,189,248,.03);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="starfield"></canvas>
+  <div id="gridOverlay"></div>
+  <div class="page-shell">
+    <div class="header">
+      <div class="title-block">
+        <h1>Ruusian Retro Web Emulator</h1>
+        <p>Clean emulator controls, browser-fit scaling, ROM search, save state support, and performance-aware rendering in a modern dashboard layout.</p>
+        <div class="brand-note">Designed and branded by Ruusian</div>
+      </div>
+      <div class="status-pill" id="hwStatus">Initializing...</div>
+    </div>
+
+    <div class="status-grid">
+      <div class="status-chip"><strong>ROM</strong><span id="activeRom">No ROM loaded</span></div>
+      <div class="status-chip"><strong>Worker</strong><span id="workerState">Starting...</span></div>
+      <div class="status-chip"><strong>FPS</strong><span id="fpsValue">0</span></div>
+      <div class="status-chip"><strong>ROMs</strong><span id="romCount">0</span></div>
+      <div class="status-chip"><strong>Control</strong><span id="controlMode">Keyboard</span></div>
+    </div>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Library & Controls</h2>
+          <span class="mini-card">Local ROM Browser</span>
+        </div>
+        <div class="panel-body">
+          <div class="card">
+            <div class="card-heading"><span>Load a ROM</span><small>Drag, select, or choose from workspace</small></div>
+            <div class="file-select">
+              <label class="upload-button" for="romFile">📁 Select ROM</label>
+              <input id="romFile" class="hidden-file" type="file" accept=".nes" onchange="loadROM(event)" />
+              <input id="romSearch" class="search-field" type="search" placeholder="Search ROMs..." oninput="filterRomList()" />
+            </div>
+            <div class="toolbar" style="margin-top:-8px">
+              <label style="color:var(--muted);font-size:0.8rem;display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" onchange="toggleUnsupportedRoms()" id="showUnsupportedCheck" /> Show unsupported ROMs
+              </label>
+            </div>
+            <div id="romList" class="rom-list">Loading ROM index...</div>
+          </div>
+
+          <div class="card">
+            <div class="card-heading"><span>Save States</span><small>Quickly store and restore progress</small></div>
+            <div class="control-group">
+              <input id="saveSlotName" class="save-input" type="text" placeholder="Save slot name (default)" />
+              <div class="toolbar">
+                <button type="button" id="saveBtn" class="toggle-btn" onclick="saveState()" title="Ctrl+S">💾 Save</button>
+                <button type="button" id="loadBtn" class="toggle-btn" onclick="loadState()" title="Ctrl+L">📂 Load</button>
+              </div>
+              <div class="toolbar">
+                <button type="button" id="exportBtn" class="toggle-btn" onclick="exportState()">⬇️ Export</button>
+                <button type="button" id="importBtn" class="toggle-btn" onclick="document.getElementById('importStateFile').click()">⬆️ Import</button>
+                <input type="file" id="importStateFile" class="hidden-file" accept=".json,.nesstate" onchange="importState(event)" />
+              </div>
+            </div>
+            <div class="save-list-header">
+              <span style="color:var(--muted);font-size:0.88rem">Saved Games</span>
+              <button type="button" class="refresh-btn" onclick="listSaves()" title="Refresh saves">↻ Refresh</button>
+            </div>
+            <div id="savesList" class="saves-list" style="max-height:200px"><span style="color:var(--muted);font-size:0.85rem">No saved games yet.</span></div>
+          </div>
+
+          <div class="card">
+            <div class="card-heading"><span>Screen</span><small>Scale, speed & effects</small></div>
+            <div class="toolbar">
+              <button type="button" class="toggle-btn active" id="scale1" onclick="setScale(1)">1x</button>
+              <button type="button" class="toggle-btn" id="scale2" onclick="setScale(2)">2x</button>
+              <button type="button" class="toggle-btn" id="scale3" onclick="setScale(3)">3x</button>
+              <button type="button" class="toggle-btn" id="scale4" onclick="setScale(4)">4x</button>
+              <button type="button" class="toggle-btn" id="fitBrowserBtn" onclick="toggleFitToBrowser()">Fit</button>
+            </div>
+            <div class="toolbar">
+              <button type="button" class="toggle-btn active" id="speed1" onclick="setSpeed(1)">1×</button>
+              <button type="button" class="toggle-btn" id="speed2" onclick="setSpeed(2)">2×</button>
+              <button type="button" class="toggle-btn" id="speed3" onclick="setSpeed(3)">3×</button>
+              <button type="button" class="toggle-btn" id="speed4" onclick="setSpeed(4)">4×</button>
+            </div>
+            <div class="toolbar">
+              <button type="button" class="toggle-btn" id="scanlinesBtn" onclick="toggleScanlines()">CRT Scanlines</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-heading"><span>Cheat Codes</span><small>RAM patch via ADDR:VALUE</small></div>
+            <div class="control-group">
+              <div class="toolbar">
+                <input id="cheatAddr" class="save-input" type="text" placeholder="ADDR (e.g. 00A0)" style="width:90px;font-family:monospace" />
+                <input id="cheatValue" class="save-input" type="text" placeholder="VALUE (e.g. 09)" style="width:70px;font-family:monospace" />
+                <button type="button" class="toggle-btn" onclick="addCheat()">Add</button>
+              </div>
+              <div class="toolbar">
+                <button type="button" class="toggle-btn" onclick="clearCheats()">Clear All</button>
+              </div>
+            </div>
+            <div id="cheatsList" class="saves-list" style="max-height:150px"><span style="color:var(--muted);font-size:0.85rem">No cheats added.</span></div>
+          </div>
+
+          <div class="card">
+            <div class="card-heading"><span>Guide & Shortcuts</span><small>Controls, codes & secrets</small></div>
+            <div class="guide-content" id="guideContent">
+              <div class="guide-section-title">🎮 NES Controls</div>
+              <table>
+                <tr><th>Action</th><th>Key</th></tr>
+                <tr><td>D-Pad</td><td><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td></tr>
+                <tr><td>A Button</td><td><kbd>I</kbd> / <kbd>Space</kbd></td></tr>
+                <tr><td>B Button</td><td><kbd>K</kbd></td></tr>
+                <tr><td>Select</td><td><kbd>J</kbd></td></tr>
+                <tr><td>Start</td><td><kbd>L</kbd> / <kbd>Enter</kbd></td></tr>
+              </table>
+              <div class="guide-section-title">⚡ Emulator Shortcuts</div>
+              <table>
+                <tr><th>Action</th><th>Key</th></tr>
+                <tr><td>Pause / Resume</td><td><kbd>Esc</kbd></td></tr>
+                <tr><td>Save State</td><td><kbd>Ctrl</kbd> + <kbd>S</kbd></td></tr>
+                <tr><td>Load State</td><td><kbd>Ctrl</kbd> + <kbd>L</kbd></td></tr>
+                <tr><td>Fullscreen</td><td><kbd>F</kbd></td></tr>
+              </table>
+              <div class="guide-section-title">⚡ Speed</div>
+              <table>
+                <tr><th>Mode</th><th>Description</th></tr>
+                <tr><td>1×</td><td>Normal speed (60 FPS)</td></tr>
+                <tr><td>2×–4×</td><td>Turbo — play at 2×–4× speed</td></tr>
+              </table>
+              <div class="guide-section-title">🛡️ Game Mods</div>
+              <p style="color:var(--muted);font-size:0.82rem;margin:0">Two universal enhancements. They patch the common NES RAM locations most games use for lives, health and currency.</p>
+              <div class="mod-row">
+                <div class="mod-info">
+                  <span class="mod-name">God Mode</span>
+                  <span class="mod-desc">Infinite lives &amp; health</span>
+                </div>
+                <input type="checkbox" class="switch" id="godModeToggle" onchange="setGodMode(this)">
+              </div>
+              <div class="mod-row">
+                <div class="mod-info">
+                  <span class="mod-name">Game Currency Enhancement</span>
+                  <span class="mod-desc">Max coins / money</span>
+                </div>
+                <input type="checkbox" class="switch" id="currencyToggle" onchange="setCurrencyMode(this)">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div style="display:flex;align-items:center;gap:12px">
+            <h2>Game Screen</h2>
+            <span id="liveIndicator" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 12px rgba(74,222,128,.5);animation:pulse 2s ease-in-out infinite"></span>
+          </div>
+          <span class="mini-card" id="loadedRom">No ROM loaded</span>
+        </div>
+        <div class="game-toolbar">
+          <button type="button" class="action-btn primary" onclick="togglePause()" id="pauseButton" title="Esc">⏸️ Pause</button>
+          <button type="button" class="action-btn" onclick="resetGame()" title="Restart current ROM">🔄 Reset</button>
+          <button type="button" class="action-btn" onclick="stopGame()" title="Stop emulation">⏹️ Stop</button>
+          <button type="button" class="action-btn" id="touchToggleBtn" onclick="toggleTouchControls()" aria-label="Toggle touch controls">📱 Touch</button>
+          <button type="button" class="action-btn" id="gamepadToggleBtn" onclick="toggleGamepad()" aria-label="Toggle gamepad controls">🎮 Gamepad</button>
+          <button type="button" class="action-btn" id="fullscreenBtn" onclick="toggleFullscreen()" aria-label="Toggle fullscreen" title="F">⛶ Fullscreen</button>
+          <button type="button" class="action-btn" id="audioToggleBtn" onclick="toggleAudio()" aria-label="Toggle audio">🔇 Audio</button>
+          <label style="display:flex;align-items:center;gap:4px;color:var(--muted);font-size:0.75rem">
+            <input type="range" id="volumeSlider" min="0" max="100" value="50" oninput="setVolume(this.value)" style="width:50px;height:4px;accent-color:var(--accent);cursor:pointer" />
+            <span id="volumeLabel">50%</span>
+          </label>
+        </div>
+        <div class="main-canvas tv-frame" id="gameViewport">
+          <div class="display-inner">
+            <div class="game-hud" id="gameHud">
+              <span class="game-hud-item" id="hudRomName"></span>
+              <span class="game-hud-item" id="hudFps">-- FPS</span>
+            </div>
+            <div id="gameCanvas" class="placeholder">
+              <div class="placeholder-welcome">
+                <div class="hero-title">Ruusian Retro NES</div>
+                <div class="hero-subtitle">Welcome back! Load a ROM from <code>/Roms/</code> or upload a .nes file to launch the emulator. Use save states, turbo speed, scanlines, and touch/gamepad controls.</div>
+                <div class="hero-actions">Browse ROMs · Upload file · Manage saves · Toggle scanlines</div>
+              </div>
+            </div>
+            <div id="pauseOverlay"><span>Paused</span></div>
+            <div class="touch-controls" id="touchControls" aria-label="Touch controls">
+            <div class="touch-cluster touch-dpad">
+              <button class="touch-btn up" data-code="38" type="button">▲</button>
+              <button class="touch-btn left" data-code="37" type="button">◀</button>
+              <button class="touch-btn right" data-code="39" type="button">▶</button>
+              <button class="touch-btn down" data-code="40" type="button">▼</button>
+            </div>
+            <div class="touch-cluster">
+              <button class="touch-btn action-btn-wide" data-code="17" type="button">Select</button>
+              <button class="touch-btn action-btn-wide" data-code="13" type="button">Start</button>
+              <button class="touch-btn action-btn-wide" data-code="88" type="button">A</button>
+              <button class="touch-btn action-btn-wide" data-code="90" type="button">B</button>
+            </div>
+          </div>
+        </div>
+        </div>
+        <div class="panel-body status-panel">
+          <div class="mini-card"><strong>Controls:</strong> Arrow / WASD = D-pad · I / Space = A · K = B · J = Select · L = Start · Enter = Start</div>
+          <span id="loadingIndicator" style="display:none;color:var(--accent-strong);font-size:0.9rem">⏳ Loading...</span>
+          <span id="status" aria-live="polite">Ready. Load a NES ROM to begin.</span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div id="toastContainer" style="position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none"></div>
+  <div id="customTooltip"></div>
+
+  <script src="/js/nes-data.js"></script>
+  <script>
+    const supportedExtensions = ['nes'];
+
+    let worker = null;
+    let audioContext = null;
+    let gainNode = null;
+    let volume = 0.5;
+    let isRunning = false;
+    let isPaused = false;
+    let workerReady = false;
+    let lastWorkerActivity = 0;
+    let currentScale = 3;
+    let fitToBrowser = false;
+    let bufferCanvas = null;
+    let bufferCtx = null;
+    let visibleCtx = null;
+    let reusableImageData = null;
+    let cachedCanvas = null;
+    let romsCache = [];
+    let pendingSaveAction = null;
+    let pendingRomName = '';
+    let currentRomName = '';
+    let currentRomData = null;
+    let touchControlsEnabled = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    let gamepadEnabled = false;
+    let gamepadPollingId = null;
+    let gamepadStates = {};
+    let loadingLock = false;
+    const SAVE_PREFIX = 'nes-emulator-save:';
+    let saveKeysCache = null;
+
+    function getSaveKeys() {
+      if (saveKeysCache) return saveKeysCache;
+      saveKeysCache = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(SAVE_PREFIX)) {
+          saveKeysCache.push(key.slice(SAVE_PREFIX.length));
+        }
+      }
+      saveKeysCache.sort();
+      return saveKeysCache;
+    }
+    function invalidateSaveCache() { saveKeysCache = null; }
+
+    // SharedArrayBuffer for zero-latency input
+    let inputSharedBuffer = null;
+    let inputSharedView = null;
+    let useSharedInput = false;
+    const INPUT_KEY_OFFSETS = { 37: 0, 38: 1, 39: 2, 40: 3, 88: 4, 90: 5, 17: 6, 13: 7 };
+
+    // requestAnimationFrame-based rendering (only render latest frame)
+    let pendingFrameBuffer = null;
+    let renderPending = false;
+
+    const romListEl = document.getElementById('romList');
+    const statusEl = document.getElementById('status');
+    const hwStatusEl = document.getElementById('hwStatus');
+    const activeRomEl = document.getElementById('activeRom');
+    const workerStateEl = document.getElementById('workerState');
+    const fpsValueEl = document.getElementById('fpsValue');
+    const romCountEl = document.getElementById('romCount');
+    const controlModeEl = document.getElementById('controlMode');
+    const loadedRomEl = document.getElementById('loadedRom');
+    const saveSlotInput = document.getElementById('saveSlotName');
+    const liveIndicator = document.getElementById('liveIndicator');
+    const viewportEl = document.getElementById('gameViewport');
+    let activeRomName = 'No ROM loaded';
+
+    const toastContainer = document.getElementById('toastContainer');
+
+    function showToast(message, type = 'info', duration = 3000) {
+      const el = document.createElement('div');
+      el.style.cssText = `
+        padding:10px 18px;border-radius:10px;font-size:0.85rem;font-weight:500;
+        backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+        border:1px solid rgba(255,255,255,.08);
+        box-shadow:0 8px 32px rgba(0,0,0,.4);
+        pointer-events:auto;cursor:pointer;
+        animation:toastIn .25s ease;
+        transition:opacity .3s,transform .3s;
+        max-width:380px
+      `;
+      if (type === 'error') {
+        el.style.background = 'rgba(251,113,133,.15)';
+        el.style.color = '#fb7185';
+        el.style.borderColor = 'rgba(251,113,133,.2)';
+      } else if (type === 'success') {
+        el.style.background = 'rgba(74,222,128,.12)';
+        el.style.color = '#4ade80';
+        el.style.borderColor = 'rgba(74,222,128,.15)';
+      } else {
+        el.style.background = 'rgba(56,189,248,.12)';
+        el.style.color = '#7dd3fc';
+        el.style.borderColor = 'rgba(56,189,248,.15)';
+      }
+      el.textContent = message;
+      toastContainer.appendChild(el);
+      while (toastContainer.children.length > 5) {
+        const oldest = toastContainer.children[0];
+        oldest.style.opacity = '0';
+        oldest.style.transform = 'translateX(20px)';
+        setTimeout(() => oldest.remove(), 300);
+      }
+      el.onclick = () => { el.style.opacity = '0'; el.style.transform = 'translateX(20px)'; setTimeout(() => el.remove(), 300); };
+      setTimeout(() => {
+        if (el.parentNode) {
+          el.style.opacity = '0';
+          el.style.transform = 'translateX(20px)';
+          setTimeout(() => el.remove(), 300);
+        }
+      }, duration);
+    }
+
+    document.head.insertAdjacentHTML('beforeend', `<style>
+      @keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+      @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+    </style>`);
+
+    function setStatus(message, type = '') {
+      statusEl.textContent = message;
+      statusEl.className = type;
+    }
+
+    const hasTouchSupport = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    const hasGamepadSupport = typeof navigator.getGamepads === 'function';
+
+    const touchToggleBtn = document.getElementById('touchToggleBtn');
+    const gamepadToggleBtn = document.getElementById('gamepadToggleBtn');
+    const gameViewport = document.getElementById('gameViewport');
+    function updateControlButtons() {
+      if (touchToggleBtn) {
+        touchToggleBtn.classList.toggle('active', touchControlsEnabled);
+        touchToggleBtn.disabled = !hasTouchSupport;
+      }
+      if (gamepadToggleBtn) {
+        gamepadToggleBtn.classList.toggle('active', gamepadEnabled);
+        gamepadToggleBtn.disabled = !hasGamepadSupport;
+      }
+      if (gameViewport) gameViewport.classList.toggle('touch-controls-visible', touchControlsEnabled);
+      const modes = [];
+      if (touchControlsEnabled) modes.push('Touch');
+      if (gamepadEnabled) modes.push('Gamepad');
+      const modesText = modes.join(' + ') || 'Keyboard';
+      if (hwStatusEl) hwStatusEl.textContent = modes.length ? `Controls: ${modesText}` : 'Controls: Keyboard';
+      if (controlModeEl) {
+        controlModeEl.textContent = modesText;
+        controlModeEl.classList.toggle('control-glow', gamepadEnabled && isRunning);
+      }
+      updateOptionStates();
+    }
+
+    function updateOptionStates() {
+      const canSave = worker && workerReady && isRunning;
+      const saveBtn = document.getElementById('saveBtn');
+      const loadBtn = document.getElementById('loadBtn');
+      const exportBtn = document.getElementById('exportBtn');
+      const importBtn = document.getElementById('importBtn');
+      if (saveBtn) saveBtn.disabled = !canSave;
+      if (exportBtn) exportBtn.disabled = !canSave;
+      if (loadBtn) loadBtn.disabled = !hasSaveSlots();
+      if (importBtn) importBtn.disabled = false;
+      setPauseButtonState();
+    }
+
+    function sendControllerInput(code, isPressed) {
+      // DEBUG: Log controller input
+      console.log(`sendControllerInput: code=${code}, isPressed=${isPressed}, isRunning=${isRunning}, isPaused=${isPaused}, worker: ${!!worker}, useSharedInput: ${useSharedInput}`);
+      if (!isRunning) return;
+      if (isPaused && isPressed) return;
+      if (useSharedInput && inputSharedView) {
+        const offset = INPUT_KEY_OFFSETS[code];
+        if (offset !== undefined) {
+          try { inputSharedView[offset] = isPressed ? 1 : 0; return; } catch (e) {}
+        }
+      }
+      const state = isPressed ? 1 : 0;
+      if (worker) {
+        try {
+          worker.postMessage({ type: 'keyInput', data: { keyCode: code, state } });
+        } catch (err) {
+          console.warn('sendControllerInput error:', err);
+        }
+      }
+    }
+
+    function setPauseButtonState() {
+      const pauseBtn = document.getElementById('pauseButton');
+      if (!pauseBtn) return;
+      pauseBtn.disabled = !isRunning;
+      pauseBtn.textContent = isPaused ? '▶ Resume' : '⏸️ Pause';
+    }
+
+    function toggleTouchControls() {
+      touchControlsEnabled = !touchControlsEnabled;
+      updateControlButtons();
+      setStatus(touchControlsEnabled ? 'Touch controls enabled' : 'Touch controls hidden');
+    }
+
+    function toggleGamepad() {
+      gamepadEnabled = !gamepadEnabled;
+      if (!gamepadEnabled) {
+        stopGamepadPolling();
+        Object.keys(gamepadStates).forEach(code => {
+          if (gamepadStates[code]) {
+            sendControllerInput(Number(code), false);
+          }
+        });
+        gamepadStates = {};
+      } else {
+        startGamepadPolling();
+      }
+      updateControlButtons();
+      setStatus(gamepadEnabled ? 'Gamepad controls enabled' : 'Gamepad controls disabled');
+    }
+
+    function stopGamepadPolling() {
+      if (gamepadPollingId) {
+        cancelAnimationFrame(gamepadPollingId);
+        gamepadPollingId = null;
+      }
+    }
+
+    function startGamepadPolling() {
+      if (!gamepadEnabled) return;
+      stopGamepadPolling();
+
+      const tick = () => {
+        if (!gamepadEnabled || !worker || !isRunning) return;
+        const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+        const gamepad = Array.from(pads).find(Boolean);
+        if (gamepad) {
+          const mappings = [
+            { code: 38, pressed: gamepad.buttons[12]?.pressed || gamepad.axes[1] <= -0.5 },
+            { code: 40, pressed: gamepad.buttons[13]?.pressed || gamepad.axes[1] >= 0.5 },
+            { code: 37, pressed: gamepad.buttons[14]?.pressed || gamepad.axes[0] <= -0.5 },
+            { code: 39, pressed: gamepad.buttons[15]?.pressed || gamepad.axes[0] >= 0.5 },
+            { code: 88, pressed: gamepad.buttons[0]?.pressed || gamepad.buttons[1]?.pressed },
+            { code: 90, pressed: gamepad.buttons[2]?.pressed || gamepad.buttons[3]?.pressed },
+            { code: 17, pressed: gamepad.buttons[8]?.pressed },
+            { code: 13, pressed: gamepad.buttons[9]?.pressed }
+          ];
+
+          mappings.forEach(({ code, pressed }) => {
+            const previous = gamepadStates[code];
+            if (previous !== pressed) {
+              gamepadStates[code] = pressed;
+              sendControllerInput(code, pressed);
+            }
+          });
+        }
+        gamepadPollingId = requestAnimationFrame(tick);
+      };
+
+      gamepadPollingId = requestAnimationFrame(tick);
+    }
+
+    function createCanvas() {
+      cachedCanvas = null;
+      const existing = document.getElementById('gameCanvas');
+      const visible = existing && existing.tagName === 'CANVAS' ? existing : null;
+      if (!visible) {
+        const canvas = document.createElement('canvas');
+        canvas.id = 'gameCanvas';
+        canvas.width = 256;
+        canvas.height = 240;
+        canvas.tabIndex = 0;
+        canvas.style.imageRendering = 'pixelated';
+        if (existing) existing.replaceWith(canvas);
+        else document.querySelector('.display-inner')?.appendChild(canvas) || document.querySelector('.main-canvas').appendChild(canvas);
+        if (!bufferCanvas) initBufferCanvas();
+        applyCanvasScale(canvas);
+        visibleCtx = canvas.getContext('2d');
+        if (visibleCtx) visibleCtx.imageSmoothingEnabled = false;
+        canvas.focus();
+        return canvas;
+      }
+      initBufferCanvas();
+      if (visible && typeof visible.focus === 'function') visible.focus();
+      return visible;
+    }
+
+    function initBufferCanvas(w, h) {
+      if (bufferCanvas) return;
+      bufferCanvas = document.createElement('canvas');
+      bufferCanvas.width = w || 256;
+      bufferCanvas.height = h || 240;
+      bufferCtx = bufferCanvas.getContext('2d', { willReadFrequently: true });
+      if (bufferCtx) bufferCtx.imageSmoothingEnabled = false;
+    }
+
+    function applyCanvasScale(canvas) {
+      if (fitToBrowser) {
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+      } else {
+        canvas.style.width = `${256 * currentScale}px`;
+        canvas.style.height = `${240 * currentScale}px`;
+      }
+      visibleCtx = canvas.getContext('2d');
+      if (visibleCtx) visibleCtx.imageSmoothingEnabled = false;
+      if (bufferCtx) bufferCtx.imageSmoothingEnabled = false;
+    }
+
+    function updateScaleButtons() {
+      [1, 2, 3, 4].forEach(value => {
+        const btn = document.getElementById(`scale${value}`);
+        if (btn) btn.classList.toggle('active', currentScale === value);
+      });
+      const fitBtn = document.getElementById('fitBrowserBtn');
+      if (fitBtn) fitBtn.classList.toggle('active', fitToBrowser);
+    }
+
+    function setScale(value) {
+      fitToBrowser = false;
+      currentScale = value;
+      updateScaleButtons();
+      const canvas = document.getElementById('gameCanvas');
+      if (canvas && canvas.tagName === 'CANVAS') applyCanvasScale(canvas);
+    }
+
+    function toggleFitToBrowser() {
+      fitToBrowser = !fitToBrowser;
+      updateScaleButtons();
+      const canvas = document.getElementById('gameCanvas');
+      if (canvas && canvas.tagName === 'CANVAS') applyCanvasScale(canvas);
+    }
+
+    function resetEmulationState() {
+      isRunning = false;
+      isPaused = false;
+      workerReady = false;
+      heldKeys.clear();
+      gamepadStates = {};
+      godModeOn = false;
+      currencyModeOn = false;
+      if (inputSharedView) inputSharedView.fill(0);
+      const godToggle = document.getElementById('godModeToggle');
+      const curToggle = document.getElementById('currencyToggle');
+      if (godToggle) godToggle.checked = false;
+      if (curToggle) curToggle.checked = false;
+      stopGamepadPolling();
+      stopHealthCheck();
+      if (liveIndicator) liveIndicator.style.display = 'none';
+      if (viewportEl) viewportEl.classList.remove('running');
+      hideHud();
+      updateOptionStates();
+    }
+
+    function waitForWorkerReady(timeout = 5000) {
+      return new Promise((resolve, reject) => {
+        if (workerReady) return resolve();
+        if (!worker) return reject(new Error('Worker is not available.'));
+
+        const startedAt = performance.now();
+        const check = () => {
+          if (workerReady) return resolve();
+          if (!worker) return reject(new Error('Worker was terminated.'));
+          if (performance.now() - startedAt >= timeout) {
+            return reject(new Error('Worker initialization timed out.'));
+          }
+          window.setTimeout(check, 50);
+        };
+        check();
+      });
+    }
+
+    function initWorker() {
+      if (worker) {
+        worker.onmessage = null;
+        worker.onerror = null;
+        worker.terminate();
+      }
+      resetEmulationState();
+      bufferCanvas = null;
+      bufferCtx = null;
+      reusableImageData = null;
+      pendingFrameBuffer = null;
+      renderPending = false;
+      const visible = createCanvas();
+      worker = new Worker('js/emulator-worker.js');
+      worker.onmessage = e => {
+        const { type, frameBuffer, message, state, value, data, mapperType, mapperName } = e.data;
+        if (type === 'frame') {
+          handleFrame(frameBuffer);
+        }
+        else if (type === 'alive') {
+          lastWorkerActivity = performance.now();
+        }
+        else if (type === 'romLoaded') {
+          hideLoading();
+          startNESGame();
+          if (pendingRomName) {
+            updateLoadedRom(pendingRomName);
+            pendingRomName = '';
+          }
+          setStatus('ROM loaded successfully.', 'success');
+          showToast('ROM loaded — game is running!', 'success', 2500);
+          updateOptionStates();
+        }
+        else if (type === 'savedState') handleSavedState(state);
+        else if (type === 'stateLoaded') {
+          hideLoading();
+          setStatus('Save state loaded. Game is running.', 'success');
+          isRunning = true;
+          isPaused = false;
+          updateOptionStates();
+          if (workerStateEl) workerStateEl.textContent = 'Running';
+        }
+        else if (type === 'hwReady') {
+          if (hwStatusEl) hwStatusEl.textContent = message;
+          if (workerStateEl) workerStateEl.textContent = 'Ready';
+        }
+        else if (type === 'reset') {
+          setStatus('Game reset.', '');
+          updateOptionStates();
+          if (workerStateEl) workerStateEl.textContent = 'Reset';
+        }
+        else if (type === 'fps') {
+          if (fpsValueEl) fpsValueEl.textContent = value > 0 ? String(value) : '--';
+          updateHud(currentRomName, value);
+        }
+        else if (type === 'error') {
+          hideLoading();
+          setStatus(`Worker error: ${message}`, 'error');
+          if (workerStateEl) workerStateEl.textContent = 'Error';
+          isRunning = false;
+          isPaused = false;
+          workerReady = false;
+          updateOptionStates();
+          if (currentRomData && message && message.startsWith('Frame error')) recoverEmulator();
+        }
+        else if (type === 'unsupportedMapper') {
+          hideLoading();
+          setStatus(`Unsupported mapper ${mapperType}: ${mapperName}. JSNES cannot run this ROM.`, 'error');
+          if (workerStateEl) workerStateEl.textContent = 'Error';
+          isRunning = false;
+          isPaused = false;
+          workerReady = false;
+          updateOptionStates();
+        }
+        else if (type === 'stopped') {
+          resetEmulationState();
+          setStatus('Emulator stopped.', '');
+          if (workerStateEl) workerStateEl.textContent = 'Stopped';
+          updateOptionStates();
+        }
+        else if (type === 'paused') {
+          setStatus('Paused', 'success');
+          if (workerStateEl) workerStateEl.textContent = 'Paused';
+        }
+        else if (type === 'resumed') {
+          setStatus('Resumed', 'success');
+          if (workerStateEl) workerStateEl.textContent = 'Running';
+        }
+        else if (type === 'audio') {
+          if (audioContext && data.samples) {
+            if (audioContext.state === 'suspended') {
+              audioContext.resume();
+            }
+            const len = data.samples.length / 2;
+            const buf = audioContext.createBuffer(2, len, data.sampleRate);
+            const ch0 = buf.getChannelData(0);
+            const ch1 = buf.getChannelData(1);
+            for (let i = 0; i < len; i++) {
+              ch0[i] = data.samples[i * 2];
+              ch1[i] = data.samples[i * 2 + 1];
+            }
+            const src = audioContext.createBufferSource();
+            src.buffer = buf;
+            src.connect(gainNode || audioContext.destination);
+            src.onended = () => src.disconnect();
+            src.start();
+          }
+        }
+        else if (type === 'modSet') {
+          const label = value.mod === 'god' ? 'God Mode' : 'Game Currency Enhancement';
+          showToast(label + (value.enabled ? ' ON' : ' OFF'), 'success', 1400);
+        }
+        else if (type === 'cheatAdded') {
+          cheatsList = cheatsList.filter(c => c.address !== value.address);
+          cheatsList.push({ address: value.address, value: value.value });
+          renderCheatsList();
+          showToast(`Cheat added: ${value.address} = ${value.value}`, 'success', 1400);
+        }
+        else if (type === 'cheatRemoved') {
+          cheatsList = cheatsList.filter(c => c.address !== value.address);
+          renderCheatsList();
+          showToast(`Cheat ${value.address} removed.`, 'info', 1400);
+        }
+        else if (type === 'cheatsCleared') {
+          cheatsList = [];
+          renderCheatsList();
+          showToast('All cheats cleared.', 'info', 1400);
+        }
+        else if (type === 'cheatsList') {
+          cheatsList = value.cheats || [];
+          renderCheatsList();
+        }
+        else if (type === 'ready') {
+          workerReady = true;
+          worker.postMessage({ type: 'setAudio', data: { enabled: audioEnabled } });
+          worker.postMessage({ type: 'setScanlines', data: { enabled: scanlinesOn } });
+          worker.postMessage({ type: 'setTurbo', data: { multiplier: currentSpeed } });
+          if (godModeOn) worker.postMessage({ type: 'setGodMode', data: { enabled: true } });
+          if (currencyModeOn) worker.postMessage({ type: 'setCurrencyMode', data: { enabled: true } });
+          cheatsList.forEach(cheat => {
+            worker.postMessage({ type: 'addCheat', address: cheat.address, value: cheat.value });
+          });
+          if (currentRomData) {
+            pendingRomName = currentRomName || pendingRomName;
+            setStatus('Restoring ROM after recovery...', 'success');
+            const transferBuffer = currentRomData.slice(0);
+            worker.postMessage({ type: 'loadROM', data: { romData: transferBuffer } }, [transferBuffer]);
+          } else {
+            setStatus('Worker ready. Load a ROM to start.', '');
+          }
+          if (workerStateEl) workerStateEl.textContent = 'Ready';
+          updateOptionStates();
+        }
+      };
+      worker.onerror = (err) => {
+        console.error('Worker error:', err?.message, err?.filename, err?.lineno, err?.colno);
+        workerReady = false;
+        isRunning = false;
+        isPaused = false;
+        updateOptionStates();
+        setStatus('Worker crashed. Restarting...', 'error');
+        recoverEmulator();
+      };
+
+      if (workerStateEl) workerStateEl.textContent = 'Initializing...';
+      const initMessage = { type: 'init' };
+      const transfer = [];
+
+      useSharedInput = false;
+      inputSharedBuffer = null;
+      inputSharedView = null;
+      if (typeof SharedArrayBuffer !== 'undefined') {
+        try {
+          inputSharedBuffer = new SharedArrayBuffer(8);
+          inputSharedView = new Uint8Array(inputSharedBuffer);
+          initMessage.inputBuffer = inputSharedBuffer;
+          useSharedInput = true;
+        } catch (e) {
+          console.warn('SharedArrayBuffer unavailable for input:', e);
+          useSharedInput = false;
+        }
+      }
+
+      if (visible.transferControlToOffscreen) {
+        try {
+          const offscreen = visible.transferControlToOffscreen();
+          initMessage.offscreen = offscreen;
+          transfer.push(offscreen);
+        } catch (err) {
+          console.warn('Offscreen canvas unavailable, falling back to 2D canvas', err);
+        }
+      }
+      if (!transfer.length) {
+        visibleCtx = visible.getContext('2d');
+        if (visibleCtx) visibleCtx.imageSmoothingEnabled = false;
+      }
+      worker.postMessage(initMessage, transfer);
+      updateOptionStates();
+    }
+
+    let crashCounter = 0;
+    let crashTimer = null;
+    function recoverEmulator() {
+      if (worker) {
+        worker.onmessage = null;
+        worker.onerror = null;
+        worker.terminate();
+        worker = null;
+      }
+      isRunning = false;
+      isPaused = false;
+      workerReady = false;
+      updateOptionStates();
+      crashCounter++;
+      if (crashCounter > 3) {
+        setStatus('Emulator keeps crashing. Try reloading the page.', 'error');
+        crashCounter = 0;
+        return;
+      }
+      if (crashTimer) clearTimeout(crashTimer);
+      crashTimer = setTimeout(() => { crashCounter = 0; }, 10000);
+      if (currentRomData) {
+        initWorker();
+      }
+    }
+
+    let healthTimeoutId = null;
+    function healthTick() {
+      if (!worker || !workerReady || !isRunning || isPaused) {
+        healthTimeoutId = null;
+        return;
+      }
+      const now = performance.now();
+      if (lastWorkerActivity && now - lastWorkerActivity > 3000) {
+        console.warn('Worker appears stuck; restarting emulator worker.');
+        setStatus('Emulator appears stuck. Restarting...', 'error');
+        recoverEmulator();
+        healthTimeoutId = null;
+        return;
+      }
+      healthTimeoutId = setTimeout(healthTick, 1500);
+    }
+    function startHealthCheck() {
+      stopHealthCheck();
+      healthTimeoutId = setTimeout(healthTick, 1500);
+    }
+    function stopHealthCheck() {
+      if (healthTimeoutId) {
+        clearTimeout(healthTimeoutId);
+        healthTimeoutId = null;
+      }
+    }
+
+    function renderFrame(frameBuffer) {
+      const w = 256;
+      const h = 240;
+      if (!cachedCanvas || cachedCanvas.tagName !== 'CANVAS') {
+        cachedCanvas = document.getElementById('gameCanvas');
+        if (!cachedCanvas || cachedCanvas.tagName !== 'CANVAS') { cachedCanvas = null; return; }
+        visibleCtx = cachedCanvas.getContext('2d');
+        if (visibleCtx) visibleCtx.imageSmoothingEnabled = false;
+      }
+      initBufferCanvas();
+      if (!reusableImageData || reusableImageData.width !== w || reusableImageData.height !== h) {
+        reusableImageData = bufferCtx.createImageData(w, h);
+      }
+      if (frameBuffer && frameBuffer.byteLength === w * h * 4) {
+        reusableImageData.data.set(frameBuffer);
+      }
+      bufferCtx.putImageData(reusableImageData, 0, 0);
+      visibleCtx.drawImage(bufferCanvas, 0, 0, cachedCanvas.width, cachedCanvas.height);
+    }
+
+    function handleFrame(frameBuffer) {
+      pendingFrameBuffer = frameBuffer;
+      if (!renderPending) {
+        renderPending = true;
+        requestAnimationFrame(() => {
+          renderPending = false;
+          if (pendingFrameBuffer) {
+            const buf = pendingFrameBuffer;
+            pendingFrameBuffer = null;
+            lastWorkerActivity = performance.now();
+            renderFrame(buf);
+          }
+        });
+      }
+    }
+
+    function getSaveSlotName() {
+      return saveSlotInput.value.trim() || 'default';
+    }
+
+    const PLACEHOLDER_WELCOME = `
+      <div class="placeholder-welcome">
+        <div class="hero-title">Ruusian Retro NES</div>
+        <div class="hero-subtitle">Welcome back! Load a ROM from <code>/Roms/</code> or upload a .nes file to launch the emulator. Use save states, turbo speed, scanlines, and touch/gamepad controls.</div>
+        <div class="hero-actions">Browse ROMs · Upload file · Manage saves · Toggle scanlines</div>
+      </div>
+    `;
+
+    function showWelcomePlaceholder() {
+      cachedCanvas = null;
+      const existing = document.getElementById('gameCanvas');
+      const placeholder = document.createElement('div');
+      placeholder.id = 'gameCanvas';
+      placeholder.className = 'placeholder';
+      placeholder.innerHTML = PLACEHOLDER_WELCOME;
+      if (existing) existing.replaceWith(placeholder);
+    }
+
+    function hasSaveSlots() {
+      return getSaveKeys().length > 0;
+    }
+
+    function handleSavedState(state) {
+      if (!state) return setStatus('Save failed.', 'error');
+      if (pendingSaveAction === 'download') downloadSaveState(state);
+      else {
+        const name = getSaveSlotName();
+        localStorage.setItem(SAVE_PREFIX + name, state);
+        invalidateSaveCache();
+        setStatus(`Saved state to "${name}"`, 'success');
+        showToast(`Saved to "${name}"`, 'success', 2000);
+        listSaves();
+        updateOptionStates();
+      }
+      pendingSaveAction = null;
+    }
+
+    function downloadSaveState(state) {
+      const fileName = `${getSaveSlotName().replace(/\s+/g, '_') || 'nes-save'}.json`;
+      const blob = new Blob([state], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setStatus(`Exported save "${fileName}"`, 'success');
+    }
+
+    function saveState() {
+      if (!worker) return setStatus('Emulator not initialized.', 'error');
+      if (!isRunning) return setStatus('Start a game before saving state.', 'error');
+      if (pendingSaveAction) return setStatus('Save already in progress.', 'error');
+      pendingSaveAction = 'store';
+      waitForWorkerReady().then(() => {
+        if (!pendingSaveAction) return;
+        worker.postMessage({ type: 'saveState' });
+        setStatus('Saving state...');
+        showToast('Saving game...', 'info', 1500);
+        updateOptionStates();
+      }).catch(err => {
+        pendingSaveAction = null;
+        setStatus(`Error: ${err.message}`, 'error');
+      });
+    }
+
+    function exportState() {
+      if (!worker) return setStatus('Emulator not initialized.', 'error');
+      if (!isRunning) return setStatus('Start a game before exporting.', 'error');
+      if (pendingSaveAction) return setStatus('Export already in progress.', 'error');
+      pendingSaveAction = 'download';
+      waitForWorkerReady().then(() => {
+        if (!pendingSaveAction) return;
+        worker.postMessage({ type: 'saveState' });
+        setStatus('Preparing save export...');
+        updateOptionStates();
+      }).catch(err => {
+        pendingSaveAction = null;
+        setStatus(`Error: ${err.message}`, 'error');
+      });
+    }
+
+    function loadState() {
+      const slot = getSaveSlotName();
+      const saved = localStorage.getItem(SAVE_PREFIX + slot);
+      if (!saved) return showToast(`No save named "${slot}"`, 'error', 2500);
+      if (!worker) {
+        initWorker();
+      }
+      const doLoad = async () => {
+        try {
+          showLoading();
+          await waitForWorkerReady();
+          worker.postMessage({ type: 'loadState', data: { state: saved } });
+          createCanvas();
+          setStatus(`Loading save "${slot}"...`);
+          showToast(`Loading "${slot}"...`, 'info', 2000);
+        } catch (err) {
+          hideLoading();
+          showToast(`Load error: ${err.message}`, 'error', 3000);
+        }
+      };
+      doLoad();
+    }
+
+    function importState(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (file.size > 50 * 1024 * 1024) return setStatus('Save file too large (max 50MB).', 'error');
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const raw = reader.result;
+          const state = JSON.parse(raw);
+          if (typeof state !== 'object' || !state) {
+            return setStatus('Invalid save file format.', 'error');
+          }
+          if (!worker) {
+            initWorker();
+          }
+          await waitForWorkerReady();
+          worker.postMessage({ type: 'loadState', data: { state: raw } });
+          createCanvas();
+          setStatus(`Imported save "${file.name}"`, 'success');
+        } catch (err) {
+          setStatus(`Import error: ${err.message}`, 'error');
+        }
+      };
+      reader.onerror = () => setStatus('Failed to read file.', 'error');
+      reader.readAsText(file);
+    }
+
+    function filterRomList() {
+      const query = document.getElementById('romSearch').value.toLowerCase();
+      renderRomList(romsCache.filter(info => info.name.toLowerCase().includes(query)));
+    }
+
+    function listSaves() {
+      const savesList = document.getElementById('savesList');
+      const keys = getSaveKeys();
+      if (!keys.length) {
+        savesList.innerHTML = '<span style="color:var(--muted);font-size:0.85rem">No saved games yet.</span>';
+        updateOptionStates();
+        return;
+      }
+      savesList.innerHTML = '';
+      const fragment = document.createDocumentFragment();
+      keys.sort().forEach(name => {
+        const item = document.createElement('div');
+        item.className = 'save-item';
+        const slotName = document.createElement('span');
+        slotName.className = 'slot-name';
+        slotName.textContent = name;
+        const actions = document.createElement('div');
+        actions.className = 'save-actions';
+        const loadBtn = document.createElement('button');
+        loadBtn.className = 'load-save';
+        loadBtn.textContent = 'Load';
+        loadBtn.onclick = () => loadSaveByName(name);
+        const delBtn = document.createElement('button');
+        delBtn.className = 'delete-save';
+        delBtn.textContent = 'Delete';
+        delBtn.onclick = () => deleteSave(name);
+        actions.appendChild(loadBtn);
+        actions.appendChild(delBtn);
+        item.appendChild(slotName);
+        item.appendChild(actions);
+        fragment.appendChild(item);
+      });
+      savesList.appendChild(fragment);
+      updateOptionStates();
+    }
+
+    function deleteSave(name) {
+      if (!confirm(`Delete save "${name}"?`)) return;
+      localStorage.removeItem(SAVE_PREFIX + name);
+      invalidateSaveCache();
+      setStatus(`Deleted save "${name}"`, '');
+      listSaves();
+      updateOptionStates();
+    }
+
+    function loadSaveByName(name) {
+      const saved = localStorage.getItem(SAVE_PREFIX + name);
+      if (!saved) return setStatus(`Save "${name}" not found.`, 'error');
+      if (!worker) initWorker();
+      const doLoad = async () => {
+        try {
+          showLoading();
+          await waitForWorkerReady();
+          worker.postMessage({ type: 'loadState', data: { state: saved } });
+          createCanvas();
+          setStatus(`Loading save "${name}"...`);
+        } catch (err) {
+          hideLoading();
+          setStatus(`Error loading save: ${err.message}`, 'error');
+        }
+      };
+      doLoad();
+    }
+
+    let currentSpeed = 1;
+    function setSpeed(multiplier) {
+      currentSpeed = multiplier;
+      [1,2,3,4].forEach(v => {
+        const btn = document.getElementById(`speed${v}`);
+        if (btn) btn.classList.toggle('active', v === multiplier);
+      });
+      if (worker && workerReady) {
+        worker.postMessage({ type: 'setTurbo', data: { multiplier } });
+      }
+      setStatus(`Speed: ${multiplier}×`);
+    }
+
+    let scanlinesOn = false;
+    function toggleScanlines() {
+      scanlinesOn = !scanlinesOn;
+      const btn = document.getElementById('scanlinesBtn');
+      if (btn) btn.classList.toggle('active', scanlinesOn);
+      if (worker && workerReady) {
+        worker.postMessage({ type: 'setScanlines', data: { enabled: scanlinesOn } });
+      }
+      setStatus(scanlinesOn ? 'CRT scanlines on' : 'Scanlines off');
+    }
+
+    // ===== Universal Game Mods =====
+    let godModeOn = false;
+    let currencyModeOn = false;
+
+    function setGodMode(el) {
+      if (!worker || !workerReady) {
+        if (el) el.checked = false;
+        return setStatus('Start a game first.', 'error');
+      }
+      godModeOn = !!el.checked;
+      worker.postMessage({ type: 'setGodMode', data: { enabled: godModeOn } });
+    }
+
+    function setCurrencyMode(el) {
+      if (!worker || !workerReady) {
+        if (el) el.checked = false;
+        return setStatus('Start a game first.', 'error');
+      }
+      currencyModeOn = !!el.checked;
+      worker.postMessage({ type: 'setCurrencyMode', data: { enabled: currencyModeOn } });
+    }
+
+    // ===== Cheat Codes =====
+    let cheatsList = [];
+
+    function addCheat() {
+      const addrInput = document.getElementById('cheatAddr');
+      const valueInput = document.getElementById('cheatValue');
+      const addr = addrInput.value.trim();
+      const value = valueInput.value.trim();
+      if (!addr || !value) return setStatus('Enter both ADDR and VALUE.', 'error');
+      if (!/^0x?[0-9A-Fa-f]{1,4}$/.test(addr)) return setStatus('Invalid ADDR format. Use hex (e.g. 00A0).', 'error');
+      if (!/^0x?[0-9A-Fa-f]{1,2}$/.test(value)) return setStatus('Invalid VALUE format. Use hex (e.g. 09).', 'error');
+      worker.postMessage({ type: 'addCheat', address: addr, value: value });
+      addrInput.value = '';
+      valueInput.value = '';
+      setStatus(`Cheat added: ${addr.toUpperCase()} = ${value.toUpperCase()}`);
+    }
+
+    function removeCheat(address) {
+      if (!worker) return setStatus('Emulator not started.', 'error');
+      worker.postMessage({ type: 'removeCheat', address });
+      setStatus(`Cheat ${address.toUpperCase()} removed.`);
+    }
+
+    function clearCheats() {
+      if (!worker) return setStatus('Emulator not started.', 'error');
+      worker.postMessage({ type: 'clearCheats' });
+      cheatsList = [];
+      renderCheatsList();
+      setStatus('All cheats cleared.');
+    }
+
+    function renderCheatsList() {
+      const el = document.getElementById('cheatsList');
+      if (!el) return;
+      if (!cheatsList.length) {
+        el.innerHTML = '<span style="color:var(--muted);font-size:0.85rem">No cheats added.</span>';
+        return;
+      }
+      el.innerHTML = '';
+      const fragment = document.createDocumentFragment();
+      cheatsList.forEach(cheat => {
+        const item = document.createElement('div');
+        item.className = 'save-item';
+        const info = document.createElement('span');
+        info.textContent = `${cheat.address} = ${cheat.value}`;
+        info.style.cssText = 'font-family:monospace;font-size:0.85rem';
+        const delBtn = document.createElement('button');
+        delBtn.className = 'delete-save';
+        delBtn.textContent = '✕';
+        delBtn.onclick = () => removeCheat(cheat.address);
+        item.appendChild(info);
+        item.appendChild(delBtn);
+        fragment.appendChild(item);
+      });
+      el.appendChild(fragment);
+    }
+
+    let showUnsupportedRoms = false;
+    function toggleUnsupportedRoms() {
+      showUnsupportedRoms = !showUnsupportedRoms;
+      filterRomList();
+    }
+    function getFileSizeLabel(bytes) {
+      if (!bytes) return '';
+      if (bytes < 1024) return bytes + 'B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + 'KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
+    }
+
+    function renderRomList(romInfos) {
+      romListEl.innerHTML = '';
+      if (!showUnsupportedRoms) {
+        romInfos = romInfos.filter(r => r.supported);
+      }
+      if (!romInfos.length) {
+        if (showUnsupportedRoms) {
+          romListEl.innerHTML = '<div style="color:var(--muted);font-size:0.9rem;line-height:1.5;padding:20px 0;text-align:center">No ROMs found in <code>/Roms/</code>.<br>Add .nes files or use the upload button.</div>';
+        } else {
+          romListEl.innerHTML = '<div style="color:var(--muted);font-size:0.9rem;line-height:1.5;padding:20px 0;text-align:center">No supported ROMs found.<br><span style="color:var(--accent);cursor:pointer" onclick="document.getElementById(\'showUnsupportedCheck\').click()">Show unsupported</span> to see incompatible ROMs.</div>';
+        }
+        updateRomCount(0);
+        return;
+      }
+      const fragment = document.createDocumentFragment();
+      romInfos.forEach(info => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'rom-item';
+        const nameSpan = document.createElement('span');
+        nameSpan.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+        const icon = document.createElement('span');
+        icon.textContent = info.supported ? '🎮' : '⚠️';
+        icon.style.fontSize = '0.9rem';
+        nameSpan.appendChild(icon);
+        const nameText = document.createElement('span');
+        nameText.textContent = info.name.replace(/\.nes$/i, '');
+        nameText.style.cssText = 'font-size:0.88rem';
+        nameSpan.appendChild(nameText);
+        if (info.mapperName) {
+          const badge = document.createElement('span');
+          badge.className = 'rom-mapper';
+          badge.textContent = info.mapperName;
+          nameSpan.appendChild(badge);
+        }
+        const supportBadge = document.createElement('span');
+        supportBadge.className = `rom-badge ${info.supported ? 'supported' : 'unsupported'}`;
+        supportBadge.textContent = info.supported ? 'Supported' : 'Unsupported';
+        const right = document.createElement('div');
+        right.style.cssText = 'display:flex;align-items:center;gap:6px;flex-shrink:0';
+        if (info.size) {
+          const sizeLabel = document.createElement('span');
+          sizeLabel.textContent = getFileSizeLabel(info.size);
+          sizeLabel.style.cssText = 'color:var(--muted);font-size:0.7rem';
+          right.appendChild(sizeLabel);
+        }
+        right.appendChild(supportBadge);
+        item.appendChild(nameSpan);
+        item.appendChild(right);
+        if (info.description) {
+          item.title = info.description;
+        }
+        item.onclick = () => loadLocalRom(info.name);
+        fragment.appendChild(item);
+      });
+      romListEl.appendChild(fragment);
+      updateRomCount(romInfos.length);
+    }
+
+    async function fetchLocalRoms() {
+      try {
+        const response = await fetch('/roms/info');
+        const romInfos = await response.json();
+        if (!response.ok) throw new Error('Unable to list ROMs');
+        romsCache = romInfos;
+        renderRomList(romInfos);
+      } catch (err) {
+        romListEl.textContent = `Error loading ROMs: ${err.message}`;
+        updateRomCount(0);
+      }
+    }
+
+    function updateLoadedRom(name='') {
+      activeRomName = name || 'No ROM loaded';
+      loadedRomEl.textContent = activeRomName;
+      if (activeRomEl) activeRomEl.textContent = activeRomName;
+    }
+
+    function updateRomCount(count) {
+      if (!romCountEl) return;
+      romCountEl.textContent = String(count);
+    }
+
+    async function loadLocalRom(name) {
+      if (loadingLock) return setStatus('Already loading a ROM.', 'error');
+      loadingLock = true;
+      try {
+        setStatus(`Loading ${name}...`);
+        showLoading();
+        pendingRomName = name;
+        if (!worker || !workerReady) {
+          currentRomData = null;
+          currentRomName = '';
+          initWorker();
+        }
+        const response = await fetch(`/roms/file?name=${encodeURIComponent(name)}`);
+        if (!response.ok) {
+          const error = await response.json();
+          pendingRomName = '';
+          throw new Error(error?.error || 'Failed to fetch ROM');
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        const support = checkRomSupport(arrayBuffer);
+        if (!support.valid) {
+          hideLoading();
+          pendingRomName = '';
+          loadingLock = false;
+          return setStatus('Invalid NES file on server.', 'error');
+        }
+        if (!support.supported) {
+          hideLoading();
+          pendingRomName = '';
+          loadingLock = false;
+          return setStatus(`Unsupported ROM mapper ${support.mapperType}: ${support.mapperName}. JSNES does not support this mapper.`, 'error');
+        }
+        currentRomName = name;
+        currentRomData = arrayBuffer;
+        const transferBuffer = currentRomData.slice(0);
+        await waitForWorkerReady();
+        worker.postMessage({ type: 'loadROM', data: { romData: transferBuffer } }, [transferBuffer]);
+        createCanvas();
+        if (workerStateEl) workerStateEl.textContent = 'Loading...';
+      } catch (err) {
+        hideLoading();
+        pendingRomName = '';
+        setStatus(`Error: ${err.message}`, 'error');
+      } finally {
+        loadingLock = false;
+      }
+    }
+
+    function loadROM(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (loadingLock) return setStatus('Already loading a ROM.', 'error');
+      const ext = getExtension(file.name);
+      if (!supportedExtensions.includes(ext)) return setStatus('Unsupported ROM type. Use .nes files only.', 'error');
+      if (file.size > 4 * 1024 * 1024) return setStatus('ROM file too large (max 4MB).', 'error');
+      event.target.blur?.();
+      loadingLock = true;
+      if (!worker || !workerReady) {
+        currentRomData = null;
+        currentRomName = '';
+        initWorker();
+      }
+      showLoading();
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const arrayBuffer = reader.result;
+          const support = checkRomSupport(arrayBuffer);
+          if (!support.valid) {
+            hideLoading();
+            loadingLock = false;
+            return setStatus('Invalid NES file (bad magic bytes).', 'error');
+          }
+          if (!support.supported) {
+            hideLoading();
+            loadingLock = false;
+            return setStatus(`Unsupported ROM mapper ${support.mapperType}: ${support.mapperName}. JSNES does not support this mapper.`, 'error');
+          }
+          pendingRomName = file.name;
+          currentRomName = file.name;
+          currentRomData = arrayBuffer;
+          const transferBuffer = currentRomData.slice(0);
+          await waitForWorkerReady();
+          worker.postMessage({ type: 'loadROM', data: { romData: transferBuffer } }, [transferBuffer]);
+          createCanvas();
+          if (workerStateEl) workerStateEl.textContent = 'Loading...';
+        } catch (err) {
+          hideLoading();
+          pendingRomName = '';
+          setStatus(`Error: ${err.message}`, 'error');
+        } finally {
+          loadingLock = false;
+        }
+      };
+      reader.onerror = () => { loadingLock = false; hideLoading(); setStatus('Failed to read ROM file.', 'error'); };
+      reader.readAsArrayBuffer(file);
+      setStatus(`Loading ${file.name}...`);
+    }
+
+    function startNESGame() {
+      isRunning = true;
+      isPaused = false;
+      lastWorkerActivity = performance.now();
+      setPauseButtonState();
+      updateOptionStates();
+      setStatus('Game running! Use keyboard controls.');
+      showToast('Game started — press Esc to pause', 'success', 2000);
+      const canvas = document.getElementById('gameCanvas');
+      if (canvas && typeof canvas.focus === 'function') canvas.focus();
+      if (workerStateEl) workerStateEl.textContent = 'Running';
+      if (liveIndicator) liveIndicator.style.display = 'inline-block';
+      if (viewportEl) viewportEl.classList.add('running');
+      updateHud(currentRomName, 0);
+      startHealthCheck();
+      if (gamepadEnabled) startGamepadPolling();
+    }
+
+    function togglePause() {
+      if (!worker || !isRunning) return;
+      isPaused = !isPaused;
+      lastWorkerActivity = performance.now();
+      if (isPaused) {
+        heldKeys.forEach(code => sendControllerInput(code, false));
+        heldKeys.clear();
+        if (inputSharedView) inputSharedView.fill(0);
+      }
+      worker.postMessage({ type: isPaused ? 'pause' : 'resume' });
+      setPauseButtonState();
+      setStatus(isPaused ? 'Game paused.' : 'Resuming play...');
+      showToast(isPaused ? '⏸ Paused' : '▶ Resumed', 'info', 1500);
+      if (workerStateEl) workerStateEl.textContent = isPaused ? 'Paused' : 'Running';
+      const pauseOverlay = document.getElementById('pauseOverlay');
+      if (pauseOverlay) pauseOverlay.classList.toggle('visible', isPaused);
+    }
+
+    function resetGame() {
+      if (!worker) return;
+      createCanvas();
+      worker.postMessage({ type: 'reset' });
+      setStatus('Game reset.');
+      showToast('Game reset', 'info', 1500);
+      if (workerStateEl) workerStateEl.textContent = 'Reset';
+    }
+
+    let audioEnabled = false;
+    function toggleAudio() {
+      audioEnabled = !audioEnabled;
+      const btn = document.getElementById('audioToggleBtn');
+      if (btn) btn.textContent = audioEnabled ? '🔊 Audio' : '🔇 Audio';
+      if (audioEnabled && !audioContext) {
+        try {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          audioContext = new AC();
+          gainNode = audioContext.createGain();
+          gainNode.gain.value = volume;
+          gainNode.connect(audioContext.destination);
+        } catch (e) {
+          audioEnabled = false;
+          const btn = document.getElementById('audioToggleBtn');
+          if (btn) btn.textContent = '🔇 Audio';
+          return setStatus('Audio not available: ' + e.message, 'error');
+        }
+      }
+      if (worker && workerReady) {
+        worker.postMessage({ type: 'setAudio', data: { enabled: audioEnabled } });
+      }
+      setStatus(audioEnabled ? 'Audio on' : 'Audio off');
+    }
+
+    function setVolume(value) {
+      volume = parseFloat(value) / 100;
+      if (gainNode) gainNode.gain.value = volume;
+      document.getElementById('volumeLabel').textContent = Math.round(volume * 100) + '%';
+    }
+
+    function toggleFullscreen() {
+      const el = document.getElementById('gameViewport');
+      if (!document.fullscreenElement) {
+        el.requestFullscreen?.();
+      } else {
+        document.exitFullscreen?.();
+      }
+    }
+
+    function showLoading() {
+      const el = document.getElementById('loadingIndicator');
+      if (el) el.style.display = '';
+    }
+    function hideLoading() {
+      const el = document.getElementById('loadingIndicator');
+      if (el) el.style.display = 'none';
+    }
+
+    function stopGame() {
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+        gainNode = null;
+      }
+      audioEnabled = false;
+      const audioBtn = document.getElementById('audioToggleBtn');
+      if (audioBtn) audioBtn.textContent = '🔇 Audio';
+      if (worker) {
+        worker.onmessage = null;
+        worker.onerror = null;
+        worker.terminate();
+        worker = null;
+      }
+      currentRomName = '';
+      currentRomData = null;
+      resetEmulationState();
+      updateLoadedRom();
+      const canvas = document.getElementById('gameCanvas');
+      if (canvas && canvas.tagName === 'CANVAS') {
+        showWelcomePlaceholder();
+      }
+      setPauseButtonState();
+      setStatus('Game stopped.');
+      showToast('Game stopped', 'info', 2000);
+      if (workerStateEl) workerStateEl.textContent = 'Stopped';
+    }
+
+    function getExtension(filename) {
+      const dotIndex = filename.lastIndexOf('.');
+      return dotIndex === -1 ? '' : filename.slice(dotIndex + 1).toLowerCase();
+    }
+
+    const keyMap = {
+      ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39,
+      w: 38, W: 38, s: 40, S: 40, a: 37, A: 37, d: 39, D: 39,
+      z: 88, Z: 88, x: 90, X: 90, i: 88, I: 88, k: 90, K: 90,
+      j: 17, J: 17, l: 13, L: 13, Enter: 13, ' ': 88,
+      KeyW: 38, KeyA: 37, KeyS: 40, KeyD: 39,
+      KeyZ: 88, KeyX: 90, KeyI: 88, KeyK: 90,
+      KeyJ: 17, KeyL: 13
+    };
+
+    function isTextInputTarget(target) {
+      return !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
+    }
+
+    // Track held keys to prevent duplicate rapid-fire
+    const heldKeys = new Set();
+    document.addEventListener('keydown', e => {
+      if (isTextInputTarget(e.target)) {
+        if (e.key === 'Escape') {
+          e.target.blur();
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        if (isRunning) togglePause();
+        e.preventDefault();
+        return;
+      }
+      if (e.key === 'F' || e.key === 'f') {
+        toggleFullscreen();
+        e.preventDefault();
+        return;
+      }
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 's') { e.preventDefault(); saveState(); return; }
+        if (e.key === 'l') { e.preventDefault(); loadState(); return; }
+        return;
+      }
+      const code = keyMap[e.key] ?? keyMap[e.code];
+      if (code === undefined) return;
+      if (isPaused || e.repeat) return;
+      e.preventDefault();
+      if (!heldKeys.has(code)) {
+        heldKeys.add(code);
+        sendControllerInput(code, true);
+      }
+    }, { capture: true });
+
+    document.addEventListener('keyup', e => {
+      const code = keyMap[e.key] ?? keyMap[e.code];
+      if (code === undefined || isTextInputTarget(e.target)) return;
+      e.preventDefault();
+      if (heldKeys.has(code)) {
+        heldKeys.delete(code);
+        sendControllerInput(code, false);
+      }
+    }, { capture: true });
+
+    // Resume AudioContext when page becomes visible; release stuck keys when hidden
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        heldKeys.forEach(code => sendControllerInput(code, false));
+        heldKeys.clear();
+        if (inputSharedView) inputSharedView.fill(0);
+      } else if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+    });
+
+    // Clean up worker on page unload to prevent memory leak
+    window.addEventListener('beforeunload', () => {
+      if (audioContext) { audioContext.close(); audioContext = null; gainNode = null; }
+      if (worker) {
+        worker.onmessage = null;
+        worker.onerror = null;
+        worker.terminate();
+        worker = null;
+      }
+      stopHealthCheck();
+      stopGamepadPolling();
+    });
+
+    const dropZone = document.querySelector('.main-canvas');
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('drag-over'); });
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files?.[0];
+      if (file) loadROM({ target: { files: [file] } });
+    });
+    dropZone.addEventListener('click', () => {
+      const c = document.getElementById('gameCanvas');
+      if (c && c.tagName === 'CANVAS') c.focus();
+    });
+
+    document.querySelectorAll('.touch-btn').forEach(button => {
+      const code = Number(button.dataset.code);
+      button.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        button.classList.add('active');
+        sendControllerInput(code, true);
+      });
+      button.addEventListener('pointerup', e => {
+        e.preventDefault();
+        button.classList.remove('active');
+        sendControllerInput(code, false);
+      });
+      button.addEventListener('pointerleave', e => {
+        if (button.classList.contains('active')) {
+          button.classList.remove('active');
+          sendControllerInput(code, false);
+        }
+      });
+      button.addEventListener('pointercancel', e => {
+        e.preventDefault();
+        button.classList.remove('active');
+        sendControllerInput(code, false);
+      });
+    });
+
+    window.addEventListener('gamepadconnected', () => {
+      updateControlButtons();
+      if (gamepadEnabled && isRunning) startGamepadPolling();
+      setStatus('Gamepad connected. Press A/B/Start to play.', 'success');
+    });
+    window.addEventListener('gamepaddisconnected', () => {
+      Object.keys(gamepadStates).forEach(code => {
+        if (gamepadStates[code]) sendControllerInput(Number(code), false);
+      });
+      gamepadStates = {};
+      updateControlButtons();
+      setStatus('Gamepad disconnected.', '');
+    });
+
+    fetchLocalRoms();
+    listSaves();
+    updateScaleButtons();
+
+    // detect already-connected gamepads at startup
+    try {
+      const initialPads = navigator.getGamepads ? navigator.getGamepads() : [];
+      for (let i = 0; i < initialPads.length; i++) {
+        if (initialPads[i]) {
+          gamepadEnabled = true;
+          break;
+        }
+      }
+    } catch (e) {}
+
+    updateControlButtons();
+
+    const starCanvas = document.getElementById('starfield');
+    const starCtx = starCanvas.getContext('2d');
+
+    function drawStaticStars() {
+      starCanvas.width = window.innerWidth;
+      starCanvas.height = window.innerHeight;
+      const count = Math.min(120, Math.floor(window.innerWidth * window.innerHeight / 8000));
+      for (let i = 0; i < count; i++) {
+        const x = Math.random() * starCanvas.width;
+        const y = Math.random() * starCanvas.height;
+        const r = Math.random() * 1.2 + 0.3;
+        const a = Math.random() * 0.35 + 0.15;
+        starCtx.beginPath();
+        starCtx.arc(x, y, r, 0, Math.PI * 2);
+        starCtx.fillStyle = `rgba(180,210,255,${a})`;
+        starCtx.fill();
+      }
+    }
+
+    drawStaticStars();
+
+    let resizeTimeout = null;
+    window.addEventListener('resize', () => {
+      if (resizeTimeout) cancelAnimationFrame(resizeTimeout);
+      resizeTimeout = requestAnimationFrame(() => {
+        drawStaticStars();
+        resizeTimeout = null;
+      });
+    });
+
+    const hudEl = document.getElementById('gameHud');
+    const hudRomNameEl = document.getElementById('hudRomName');
+    const hudFpsEl = document.getElementById('hudFps');
+
+    function updateHud(romName, fps) {
+      hudRomNameEl.textContent = romName || currentRomName || 'No ROM';
+      if (fps !== undefined) {
+        const rounded = Math.round(fps);
+        hudFpsEl.textContent = `${rounded} FPS`;
+        hudFpsEl.className = 'game-hud-item' +
+          (rounded >= 55 ? ' hud-fps-fine' :
+           rounded >= 28 ? ' hud-fps-ok' :
+           ' hud-fps-poor');
+      } else {
+        hudFpsEl.textContent = '-- FPS';
+        hudFpsEl.className = 'game-hud-item';
+      }
+      if (!hudEl.classList.contains('visible') && isRunning) {
+        hudEl.classList.add('visible');
+      }
+    }
+
+    function hideHud() {
+      hudEl.classList.remove('visible');
+    }
+
+    const tooltipEl = document.getElementById('customTooltip');
+    let tooltipTimeout = null;
+
+    function setupCustomTooltips() {
+      document.querySelectorAll('[title]').forEach(el => {
+        const text = el.getAttribute('title');
+        if (!text || el.closest('.touch-controls') || el.closest('table')) return;
+        el.setAttribute('data-tip', text);
+        el.removeAttribute('title');
+        el.addEventListener('mouseenter', e => {
+          tooltipTimeout = setTimeout(() => {
+            tooltipEl.textContent = el.getAttribute('data-tip');
+            tooltipEl.classList.add('visible');
+            positionTooltip(e);
+          }, 400);
+        });
+        let tooltipMoveTick = 0;
+        el.addEventListener('mousemove', e => {
+          const now = Date.now();
+          if (now - tooltipMoveTick < 40) return;
+          tooltipMoveTick = now;
+          positionTooltip(e);
+        });
+        el.addEventListener('mouseleave', () => {
+          clearTimeout(tooltipTimeout);
+          tooltipEl.classList.remove('visible');
+        });
+      });
+    }
+
+    function positionTooltip(e) {
+      const pad = 10;
+      let x = e.clientX + pad;
+      let y = e.clientY + pad + 4;
+      const rect = tooltipEl.getBoundingClientRect();
+      if (x + rect.width > window.innerWidth - pad) x = e.clientX - rect.width - pad;
+      if (y + rect.height > window.innerHeight - pad) y = e.clientY - rect.height - pad;
+      tooltipEl.style.left = x + 'px';
+      tooltipEl.style.top = y + 'px';
+    }
+
+    setupCustomTooltips();
+  </script>
+  <footer class="app-footer">
+    <div>
+      <strong>Ruusian Retro Web Emulator</strong>
+      <span>Built and styled by Ruusian for classic NES play.</span>
+    </div>
+    <div class="footer-note">Drag-and-drop ROM support, save state export, and responsive controls.</div>
+  </footer>
+</body>
+</html>
