@@ -49,16 +49,18 @@ Stop the server with `CTRL+C`.
 ```text
 emulator/
 ├── package.json              Node.js package information
-├── server.js                 Express server and API routes
 ├── README.md                 Project documentation
 ├── .gitignore                Files and directories excluded from git
-├── public/
-│   ├── index.html            Frontend UI and emulator wiring
-│   ├── js/
-│   │   ├── emulator-worker.js  Worker-side emulation runtime
-│   │   ├── jsnes.min.js        Minified JSNES library
-│   │   └── nes-data.js         NES constants and ROM helper data
-│   └── favicon.svg
+├── node_modules/             Installed dependencies (ignored)
+├── src/
+│   ├── server.js             Express server and API routes
+│   └── client/
+│       ├── index.html        Frontend UI and emulator wiring
+│       ├── js/
+│       │   ├── emulator-worker.js  Worker-side emulation runtime
+│       │   ├── jsnes.min.js        Minified JSNES library
+│       │   └── nes-data.js         NES constants and ROM helper data
+│       └── favicon.svg
 ├── Roms/                     NES ROM files for loading
 └── saves/                    Optional save files and state exports
 ```

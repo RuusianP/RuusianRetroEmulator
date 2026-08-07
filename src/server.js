@@ -221,7 +221,7 @@ function invalidateRomsInfoCache() {
   romsInfoCacheMtime = null;
 }
 
-app.use(express.static(path.join(__dirname, 'public'), {
+app.use(express.static(path.join(__dirname, 'client'), {
   maxAge: process.env.NODE_ENV === 'production' ? ONE_DAY * 1000 : 0,
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
@@ -408,7 +408,7 @@ app.delete('/api/saves/delete', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'client', 'index.html'));
 });
 
 app.use((req, res) => {
