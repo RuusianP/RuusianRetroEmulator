@@ -1568,7 +1568,7 @@
         canvas.setAttribute('aria-label', 'NES game canvas');
         canvas.style.imageRendering = 'pixelated';
         if (existing) existing.replaceWith(canvas);
-        else document.querySelector('.display-inner')?.appendChild(canvas) || document.querySelector('.main-canvas').appendChild(canvas);
+        else document.querySelector('.display-inner')?.appendChild(canvas) || document.querySelector('.main-canvas')?.appendChild(canvas);
         applyCanvasScale(canvas);
         canvas.focus();
         return canvas;
@@ -2506,16 +2506,18 @@
       setStatus(audioEnabled ? 'Audio on' : 'Audio off');
     }
 
-    function setVolume(value) {
-      volume = parseFloat(value) / 100;
-      if (gainNode) gainNode.gain.value = volume;
-      document.getElementById('volumeLabel').textContent = Math.round(volume * 100) + '%';
-    }
+     function setVolume(value) {
+       const v = parseFloat(value);
+       volume = isNaN(v) ? 0.5 : Math.max(0, Math.min(1, v / 100));
+       if (gainNode) gainNode.gain.value = volume;
+       const labelEl = document.getElementById('volumeLabel');
+       if (labelEl) labelEl.textContent = Math.round(volume * 100) + '%';
+     }
 
     function toggleFullscreen() {
       const el = document.getElementById('gameViewport');
       if (!document.fullscreenElement) {
-        el.requestFullscreen?.();
+        el?.requestFullscreen?.();
       } else {
         document.exitFullscreen?.();
       }
