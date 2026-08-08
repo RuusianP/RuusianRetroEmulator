@@ -8,13 +8,10 @@
   <style>
     :root {
       --bg: #060a16;
-      --bg-alt: #0b1328;
       --panel: rgba(12, 20, 42, 0.85);
       --panel-alt: rgba(16, 28, 55, 0.9);
-      --border: rgba(255,255,255,.06);
       --accent: #38bdf8;
       --accent-dim: rgba(56,189,248,.15);
-      --accent-glow: rgba(56,189,248,.2);
       --accent-strong: #7dd3fc;
       --text: #e9f2ff;
       --muted: #8899c7;
@@ -1244,10 +1241,10 @@
             <div id="pauseOverlay"><span>Paused</span></div>
             <div class="touch-controls" id="touchControls" aria-label="Touch controls">
             <div class="touch-cluster touch-dpad">
-              <button class="touch-btn up" data-code="38" type="button">▲</button>
-              <button class="touch-btn left" data-code="37" type="button">◀</button>
-              <button class="touch-btn" data-code="39" type="button">▶</button>
-              <button class="touch-btn down" data-code="40" type="button">▼</button>
+               <button class="touch-btn up" data-code="38" type="button" aria-label="Up">▲</button>
+               <button class="touch-btn left" data-code="37" type="button" aria-label="Left">◀</button>
+               <button class="touch-btn" data-code="39" type="button" aria-label="Right">▶</button>
+               <button class="touch-btn down" data-code="40" type="button" aria-label="Down">▼</button>
             </div>
             <div class="touch-cluster">
               <button class="touch-btn action-btn-wide" data-code="17" type="button">Select</button>

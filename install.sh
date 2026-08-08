@@ -124,7 +124,9 @@ main() {
       pacman) run_root pacman -S --noconfirm curl ;;
       apk) run_root apk add curl ;;
       brew) brew install curl ;;
+      *) fail "Could not detect a package manager. Install curl or wget manually, then re-run." ;;
     esac
+    command -v curl >/dev/null 2>&1 || command -v wget >/dev/null 2>&1 || fail "Failed to install curl or wget."
   fi
 
   ensure_node

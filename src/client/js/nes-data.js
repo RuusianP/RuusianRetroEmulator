@@ -1,6 +1,5 @@
 (function() {
-  var MAPPER_IDS = [0,1,2,3,4,5,6,7,8,9,10,11,12,15,16,17,18,19,20,21,22,23,24,25,32,33,34,64,65,66,67,68,69,71,78,91];
-  var SUPPORTED_MAPPER_IDS = new Set(MAPPER_IDS);
+  var SUPPORTED_MAPPER_IDS = new Set([0,1,2,3,4,5,6,7,8,9,10,11,12,15,16,17,18,19,20,21,22,23,24,25,32,33,34,64,65,66,67,68,69,71,78,91]);
   var MAPPER_NAMES = {
     0: 'Direct Access / NROM',
     1: 'Nintendo MMC1',
@@ -23,7 +22,7 @@
     20: 'Famicom Disk System',
     21: 'Konami VRC4a',
     22: 'Konami VRC2a',
-    23: 'Konami VRC2a',
+    23: 'Konami VRC2b',
     24: 'Konami VRC6',
     25: 'Konami VRC4b',
     32: 'Irem G-101 chip',
@@ -41,8 +40,7 @@
   };
 
   function checkNESMagic(bytes) {
-    var len = bytes instanceof Uint8Array ? bytes.length : (bytes.length || 0);
-    return len >= 4 && bytes[0] === 0x4E && bytes[1] === 0x45 && bytes[2] === 0x53 && bytes[3] === 0x1A;
+     return bytes.length >= 4 && bytes[0] === 0x4E && bytes[1] === 0x45 && bytes[2] === 0x53 && bytes[3] === 0x1A;
   }
 
   function parseNESHeader(buffer) {

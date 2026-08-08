@@ -122,7 +122,7 @@ The app is split into two threads connected by a worker message protocol.
 **Worker (`emulator-worker.js`)**
 - Owns the JSNES instance and runs the frame loop
 - Handles `init`, `loadROM`, `pause`/`resume`, `reset`, `stop`, `saveState`/`loadState`, `keyInput`, `setTurbo`, `setAudio`, `setScanlines`, `setGodMode`/`setCurrencyMode`, and `addCheat`/`removeCheat`/`clearCheats`/`getCheats`
-- Replies with `hwReady`, `ready`, `romLoaded`, `savedState`, `stateLoaded`, `savedState`, `inputAck`, `cheatsList`, `modSet`, `turboSet`, `scanlinesSet`, `audioReady`, `alive`, `fps`, `paused`, `resumed`, `stopped`, `reset`, and `error` messages
+- Replies with `hwReady`, `ready`, `romLoaded`, `savedState`, `stateLoaded`, `cheatAdded`, `cheatRemoved`, `cheatsCleared`, `cheatsList`, `inputAck`, `modSet`, `turboSet`, `scanlinesSet`, `audioReady`, `alive`, `fps`, `paused`, `resumed`, `stopped`, `reset`, and `error` messages
 
 **Shared input buffer**
 
