@@ -2070,23 +2070,25 @@
       if (!file) return;
       if (file.size > 50 * 1024 * 1024) return setStatus('Save file too large (max 50MB).', 'error');
       const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const raw = reader.result;
-          const state = JSON.parse(raw);
-          if (typeof state !== 'object' || !state) {
-            return setStatus('Invalid save file format.', 'error');
-          }
-          if (!worker) {
-            initWorker();
-          }
-          await waitForWorkerReady();
-          worker.postMessage({ type: 'loadState', data: { state: raw } });
-          createCanvas();
-          setStatus(`Imported save "${file.name}"`, 'success');
-        } catch (err) {
-          setStatus(`Import error: ${err.message}`, 'error');
-        }
+       reader.onload = async () => {
+         try {
+           const raw = reader.result;
+           const state = JSON.parse(raw);
+           if (typeof state !== 'object' || !state) {
+             return setStatus('Invalid save file format.', 'error');
+           }
+           if (!worker) {
+             initWorker();
+           }
+           showLoading();
+           await waitForWorkerReady();
+           worker.postMessage({ type: 'loadState', data: { state: raw } });
+           createCanvas();
+           setStatus(`Imported save "${file.name}"`, 'success');
+         } catch (err) {
+           hideLoading();
+           setStatus(`Import error: ${err.message}`, 'error');
+         }
       };
       reader.onerror = () => setStatus('Failed to read file.', 'error');
       reader.readAsText(file);
