@@ -3,11 +3,22 @@
   "version": "1.0.0",
   "description": "Retro NES emulator by Ruusian",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node src/server.js",
     "dashboard": "node dashboard.js",
-    "stop": "lsof -ti :3000 | xargs -r kill -9 2>/dev/null || pkill -f 'node server.js' 2>/dev/null || true"
+    "stop": "lsof -ti :3000 | xargs -r kill -9 2>/dev/null || pkill -f 'src/server.js' 2>/dev/null || true",
+    "lint": "eslint src/ dashboard.js install.js",
+    "format": "prettier --write \"src/**/*.js\" dashboard.js install.js *.sh",
+    "test": "node test/rom-utils.test.js"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "jest": "^29.0.0",
+    "prettier": "^3.3.0"
   },
   "dependencies": {
     "compression": "^1.8.1",

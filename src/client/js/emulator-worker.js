@@ -72,17 +72,29 @@ let frameTimer = null;
 
 let rgbaBuffer = null;
 let offscreenImageData = null;
+let jsnesLoaded = false;
+
+function loadJSNES() {
+  try {
+    importScripts('jsnes.min.js');
+    if (typeof self.jsnes !== 'undefined' || typeof self.JSNES !== 'undefined') {
+      jsnesLoaded = true;
+    } else {
+      self.postMessage({ type: 'error', message: 'JSNES loaded but not exposed correctly.' });
+    }
+  } catch (err) {
+    self.postMessage({ type: 'error', message: 'Failed to load JSNES: ' + err.message });
+  }
+}
+
+loadJSNES();
 
 function cancelScheduledFrame() {
   if (frameTimer) clearTimeout(frameTimer);
   frameTimer = null;
 }
 
-try {
-  importScripts('jsnes.min.js');
-} catch (err) {
-  self.postMessage({ type: 'error', message: 'Failed to load JSNES: ' + err.message });
-}
+loadJSNES();
 
 function startFrameLoop() {
   if (!nes || !isRunning || isPaused || frameLooping) return;
@@ -129,6 +141,9 @@ self.onmessage = function(e) {
       }
       stopFrameLoop();
       initNES();
+      if (!nes) {
+        break;
+      }
       if (offscreenCtx) {
         self.postMessage({ type: 'hwReady', message: 'Offscreen canvas rendering enabled' + (inputBuffer ? ' + SharedInput' : '') });
       } else {
@@ -372,6 +387,10 @@ function applyScanlines(buf) {
 }
 
 function initNES() {
+  if (!jsnesLoaded) {
+    self.postMessage({ type: 'error', message: 'JSNES library not loaded. Check the console for import errors.' });
+    return;
+  }
   const JSNES = self.jsnes?.NES || self.JSNES;
   if (!JSNES) {
     self.postMessage({ type: 'error', message: 'JSNES not found' });

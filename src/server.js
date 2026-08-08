@@ -46,15 +46,25 @@ app.use(helmet({
   contentSecurityPolicy: false,
 }));
 
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https?:\/\/localhost(:\d+)?$/,
+  /\.github\.dev$/,
+  /\.preview\.app\.github\.dev$/
+];
+
+function isAllowedOrigin(origin) {
+  return ALLOWED_ORIGIN_PATTERNS.some(pattern => pattern.test(origin));
+}
+
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', '');
+  res.setHeader('Permissions-Policy', 'fullscreen=*, gamepads=*, autoplay=*, picture-in-picture=*');
   res.removeHeader('X-Powered-By');
   req.id = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
   const origin = req.headers.origin;
-  if (origin && (origin.startsWith('http://localhost') || origin.endsWith('.github.dev') || origin.endsWith('.preview.app.github.dev'))) {
+  if (origin && isAllowedOrigin(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -288,7 +298,7 @@ app.get('/roms/file', (req, res) => {
   });
 });
 
-app.post('/roms/upload', (req, res, next) => {
+app.post('/roms/upload', (req, res) => {
   upload.single('rom')(req, res, err => {
     if (err) {
       if (err instanceof multer.MulterError) {
@@ -314,7 +324,7 @@ app.post('/roms/upload', (req, res, next) => {
       }
     } catch (e) {
       fs.unlinkSync(filePath);
-      return res.status(500).json({ error: 'Failed to validate ROM.', detail: e.message });
+      return res.status(500).json({ error: 'Failed to validate ROM.' });
     }
 
     invalidateRomsInfoCache();
@@ -339,7 +349,7 @@ app.delete('/roms/delete', (req, res) => {
     invalidateRomsInfoCache();
     res.json({ ok: true, name });
   } catch (e) {
-    res.status(500).json({ error: 'Failed to delete ROM', detail: e.message });
+    res.status(500).json({ error: 'Failed to delete ROM' });
   }
 });
 
@@ -360,7 +370,7 @@ app.get('/api/saves', (req, res) => {
       .sort((a, b) => b.modified - a.modified);
     res.json(files);
   } catch (e) {
-    res.status(500).json({ error: 'Failed to list saves', detail: e.message });
+    res.status(500).json({ error: 'Failed to list saves' });
   }
 });
 
@@ -397,7 +407,7 @@ try { ensureSavesDir(); } catch (e) { console.error('[server] Failed to create s
     fs.writeFileSync(filePath, payload, 'utf8');
     res.json({ ok: true, name });
   } catch (e) {
-    res.status(500).json({ error: 'Failed to save', detail: e.message });
+    res.status(500).json({ error: 'Failed to save' });
   }
 });
 
@@ -414,7 +424,7 @@ app.delete('/api/saves/delete', (req, res) => {
     fs.unlinkSync(filePath);
     res.json({ ok: true, name });
   } catch (e) {
-    res.status(500).json({ error: 'Failed to delete save', detail: e.message });
+    res.status(500).json({ error: 'Failed to delete save' });
   }
 });
 
@@ -426,7 +436,7 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error(`[${req.id || 'unknown'}] Unhandled error:`, err.message || err);
   res.status(500).json({ error: 'Internal server error' });
 });
@@ -467,4 +477,7 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('uncaughtException', err => {
   console.error('[server] Uncaught exception:', err);
   process.exit(1);
+});
+process.on('unhandledRejection', (reason, _promise) => {
+  console.error('[server] Unhandled rejection:', reason);
 });

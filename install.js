@@ -8,9 +8,6 @@
  * clones (or reuses) the repository, installs npm dependencies and wires up
  * a `ruusian` launcher that opens the CLI dashboard.
  *
- * This file intentionally avoids `__dirname`/`__filename` so it can also be
- * bootstrapped via:  node -e "fetch(url).then(r=>r.text()).then(eval)"
- *
  * Node >= 18 is required (for global fetch).
  */
 
@@ -199,7 +196,7 @@ function setupPath(target, platform, launcher) {
   }
 }
 
-function runDashboard(target, launcher) {
+function runDashboard(target) {
   log('');
   info('Installation complete!');
   log('');
@@ -245,7 +242,7 @@ function main() {
 
   const launcher = writeLauncher(target, platform);
   setupPath(target, platform, launcher);
-  runDashboard(target, launcher);
+  runDashboard(target);
 
   if (autoStart) {
     log('');

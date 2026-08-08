@@ -2,8 +2,6 @@
 'use strict';
 
 const fs = require('fs');
-const http = require('http');
-const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const readline = require('readline');
@@ -357,7 +355,6 @@ let promptHandler = null;
 let menu = null;
 let cursor = 0;
 let history = [];
-let dirty = true;
 
 function clearScreen() { process.stdout.write('\x1b[2J\x1b[H'); }
 
@@ -377,7 +374,6 @@ async function currentStatusLine() {
 }
 
 async function render() {
-  dirty = false;
   clearScreen();
   const status = await currentStatusLine();
   const pkg = require(path.join(REPO_ROOT, 'package.json'));
@@ -458,7 +454,7 @@ function buildPortMenu() {
 
 function waitKey() {
   return new Promise(resolve => {
-    const onKey = (str, key) => {
+    const onKey = (_str, _key) => {
       stdin.removeListener('keypress', onKey);
       resolve();
     };

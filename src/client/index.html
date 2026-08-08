@@ -600,6 +600,15 @@
       transition: border-color .3s, box-shadow .3s;
     }
 
+    .display-inner {
+      position: relative;
+      width: 256px;
+      height: 240px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     .main-canvas.drag-over {
       border-color: #77d7ff;
       box-shadow: 0 0 40px rgba(119,215,255,.15);
@@ -1029,6 +1038,27 @@
       border-color: rgba(56,189,248,.15);
       background: rgba(56,189,248,.03);
     }
+
+    footer {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,.05);
+      color: var(--muted);
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    footer strong {
+      color: var(--text);
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -1198,7 +1228,7 @@
             <span id="volumeLabel">50%</span>
           </label>
         </div>
-        <div class="main-canvas tv-frame" id="gameViewport">
+        <div class="main-canvas" id="gameViewport">
           <div class="display-inner">
             <div class="game-hud" id="gameHud">
               <span class="game-hud-item" id="hudRomName"></span>
@@ -1216,7 +1246,7 @@
             <div class="touch-cluster touch-dpad">
               <button class="touch-btn up" data-code="38" type="button">▲</button>
               <button class="touch-btn left" data-code="37" type="button">◀</button>
-              <button class="touch-btn right" data-code="39" type="button">▶</button>
+              <button class="touch-btn" data-code="39" type="button">▶</button>
               <button class="touch-btn down" data-code="40" type="button">▼</button>
             </div>
             <div class="touch-cluster">
@@ -1269,8 +1299,9 @@
     let gamepadPollingId = null;
     let gamepadStates = {};
     let loadingLock = false;
-    const SAVE_PREFIX = 'nes-emulator-save:';
-    let saveKeysCache = null;
+     const SAVE_PREFIX = 'nes-emulator-save:';
+     let saveKeysCache = null;
+     const heldKeys = new Set();
 
     function getSaveKeys() {
       if (saveKeysCache) return saveKeysCache;
@@ -1650,7 +1681,7 @@
       const visible = createCanvas();
       worker = new Worker('js/emulator-worker.js');
       worker.onmessage = e => {
-        const { type, frameBuffer, message, state, value, data, mapperType, mapperName } = e.data;
+        const { type, frameBuffer, message, state, value, data, mapperType, mapperName, mod, enabled, address, cheats } = e.data;
         if (type === 'inputAck') {
           if (DEBUG_INPUT) updateDebugPanel(`workerAck:${e.data.keyCode}:${e.data.state}`);
         }
@@ -1747,19 +1778,19 @@
           }
         }
         else if (type === 'modSet') {
-          const label = value.mod === 'god' ? 'God Mode' : 'Game Currency Enhancement';
-          showToast(label + (value.enabled ? ' ON' : ' OFF'), 'success', 1400);
+          const label = mod === 'god' ? 'God Mode' : 'Game Currency Enhancement';
+          showToast(label + (enabled ? ' ON' : ' OFF'), 'success', 1400);
         }
         else if (type === 'cheatAdded') {
-          cheatsList = cheatsList.filter(c => c.address !== value.address);
-          cheatsList.push({ address: value.address, value: value.value });
+          cheatsList = cheatsList.filter(c => c.address !== address);
+          cheatsList.push({ address, value });
           renderCheatsList();
-          showToast(`Cheat added: ${value.address} = ${value.value}`, 'success', 1400);
+          showToast(`Cheat added: ${address} = ${value}`, 'success', 1400);
         }
         else if (type === 'cheatRemoved') {
-          cheatsList = cheatsList.filter(c => c.address !== value.address);
+          cheatsList = cheatsList.filter(c => c.address !== address);
           renderCheatsList();
-          showToast(`Cheat ${value.address} removed.`, 'info', 1400);
+          showToast(`Cheat ${address} removed.`, 'info', 1400);
         }
         else if (type === 'cheatsCleared') {
           cheatsList = [];
@@ -1767,8 +1798,12 @@
           showToast('All cheats cleared.', 'info', 1400);
         }
         else if (type === 'cheatsList') {
-          cheatsList = value.cheats || [];
+          cheatsList = cheats || [];
           renderCheatsList();
+        }
+        else if (type === 'scanlinesSet') {
+          const btn = document.getElementById('scanlinesBtn');
+          if (btn) btn.classList.toggle('active', enabled);
         }
         else if (type === 'ready') {
           workerReady = true;
@@ -1778,7 +1813,7 @@
           if (godModeOn) worker.postMessage({ type: 'setGodMode', data: { enabled: true } });
           if (currencyModeOn) worker.postMessage({ type: 'setCurrencyMode', data: { enabled: true } });
           cheatsList.forEach(cheat => {
-            worker.postMessage({ type: 'addCheat', address: cheat.address, value: cheat.value });
+            worker.postMessage({ type: 'addCheat', data: { address: cheat.address, value: cheat.value } });
           });
           if (currentRomData) {
             pendingRomName = currentRomName || pendingRomName;
@@ -1982,16 +2017,17 @@
       setStatus(`Exported save "${fileName}"`, 'success');
     }
 
-    function saveState() {
+    function commitSaveState(action) {
       if (!worker) return setStatus('Emulator not initialized.', 'error');
       if (!isRunning) return setStatus('Start a game before saving state.', 'error');
-      if (pendingSaveAction) return setStatus('Save already in progress.', 'error');
-      pendingSaveAction = 'store';
+      if (pendingSaveAction) return setStatus('A save operation is already in progress.', 'error');
+      pendingSaveAction = action;
+      const saving = action === 'download';
       waitForWorkerReady().then(() => {
         if (!pendingSaveAction) return;
         worker.postMessage({ type: 'saveState' });
-        setStatus('Saving state...');
-        showToast('Saving game...', 'info', 1500);
+        setStatus(saving ? 'Preparing save export...' : 'Saving state...');
+        if (!saving) showToast('Saving game...', 'info', 1500);
         updateOptionStates();
       }).catch(err => {
         pendingSaveAction = null;
@@ -1999,37 +2035,20 @@
       });
     }
 
-    function exportState() {
-      if (!worker) return setStatus('Emulator not initialized.', 'error');
-      if (!isRunning) return setStatus('Start a game before exporting.', 'error');
-      if (pendingSaveAction) return setStatus('Export already in progress.', 'error');
-      pendingSaveAction = 'download';
-      waitForWorkerReady().then(() => {
-        if (!pendingSaveAction) return;
-        worker.postMessage({ type: 'saveState' });
-        setStatus('Preparing save export...');
-        updateOptionStates();
-      }).catch(err => {
-        pendingSaveAction = null;
-        setStatus(`Error: ${err.message}`, 'error');
-      });
-    }
+    function saveState() { commitSaveState('store'); }
+    function exportState() { commitSaveState('download'); }
 
-    function loadState() {
-      const slot = getSaveSlotName();
-      const saved = localStorage.getItem(SAVE_PREFIX + slot);
-      if (!saved) return showToast(`No save named "${slot}"`, 'error', 2500);
-      if (!worker) {
-        initWorker();
-      }
+    function applySaveState(name, stateData, displayName) {
+      if (!worker) initWorker();
+      const label = displayName || name;
       const doLoad = async () => {
         try {
           showLoading();
           await waitForWorkerReady();
-          worker.postMessage({ type: 'loadState', data: { state: saved } });
+          worker.postMessage({ type: 'loadState', data: { state: stateData } });
           createCanvas();
-          setStatus(`Loading save "${slot}"...`);
-          showToast(`Loading "${slot}"...`, 'info', 2000);
+          setStatus(`Loading save "${label}"...`);
+          showToast(`Loading "${label}"...`, 'info', 2000);
         } catch (err) {
           hideLoading();
           showToast(`Load error: ${err.message}`, 'error', 3000);
@@ -2038,7 +2057,14 @@
       doLoad();
     }
 
-    function importState(event) {
+    function loadState() {
+      const slot = getSaveSlotName();
+      const saved = localStorage.getItem(SAVE_PREFIX + slot);
+      if (!saved) return showToast(`No save named "${slot}"`, 'error', 2500);
+      applySaveState(slot, saved, slot);
+     }
+
+     function importState(event) {
       const file = event.target.files?.[0];
       if (!file) return;
       if (file.size > 50 * 1024 * 1024) return setStatus('Save file too large (max 50MB).', 'error');
@@ -2113,25 +2139,12 @@
       setStatus(`Deleted save "${name}"`, '');
       listSaves();
       updateOptionStates();
-    }
+     }
 
     function loadSaveByName(name) {
       const saved = localStorage.getItem(SAVE_PREFIX + name);
       if (!saved) return setStatus(`Save "${name}" not found.`, 'error');
-      if (!worker) initWorker();
-      const doLoad = async () => {
-        try {
-          showLoading();
-          await waitForWorkerReady();
-          worker.postMessage({ type: 'loadState', data: { state: saved } });
-          createCanvas();
-          setStatus(`Loading save "${name}"...`);
-        } catch (err) {
-          hideLoading();
-          setStatus(`Error loading save: ${err.message}`, 'error');
-        }
-      };
-      doLoad();
+      applySaveState(name, saved);
     }
 
     let currentSpeed = 1;
@@ -2191,7 +2204,7 @@
       if (!addr || !value) return setStatus('Enter both ADDR and VALUE.', 'error');
       if (!/^0x?[0-9A-Fa-f]{1,4}$/.test(addr)) return setStatus('Invalid ADDR format. Use hex (e.g. 00A0).', 'error');
       if (!/^0x?[0-9A-Fa-f]{1,2}$/.test(value)) return setStatus('Invalid VALUE format. Use hex (e.g. 09).', 'error');
-      worker.postMessage({ type: 'addCheat', address: addr, value: value });
+      worker.postMessage({ type: 'addCheat', data: { address: addr, value: value } });
       addrInput.value = '';
       valueInput.value = '';
       setStatus(`Cheat added: ${addr.toUpperCase()} = ${value.toUpperCase()}`);
@@ -2199,7 +2212,7 @@
 
     function removeCheat(address) {
       if (!worker) return setStatus('Emulator not started.', 'error');
-      worker.postMessage({ type: 'removeCheat', address });
+      worker.postMessage({ type: 'removeCheat', data: { address } });
       setStatus(`Cheat ${address.toUpperCase()} removed.`);
     }
 
@@ -2332,13 +2345,30 @@
       romCountEl.textContent = String(count);
     }
 
+    async function loadROMData(name, arrayBuffer) {
+      const support = checkRomSupport(arrayBuffer);
+      if (!support.valid) {
+        throw new Error('Invalid NES file (bad magic bytes).');
+      }
+      if (!support.supported) {
+        throw new Error(`Unsupported ROM mapper ${support.mapperType}: ${support.mapperName}. JSNES does not support this mapper.`);
+      }
+      pendingRomName = name;
+      currentRomName = name;
+      currentRomData = arrayBuffer;
+      const transferBuffer = currentRomData.slice(0);
+      await waitForWorkerReady();
+      worker.postMessage({ type: 'loadROM', data: { romData: transferBuffer } }, [transferBuffer]);
+      createCanvas();
+      if (workerStateEl) workerStateEl.textContent = 'Loading...';
+    }
+
     async function loadLocalRom(name) {
       if (loadingLock) return setStatus('Already loading a ROM.', 'error');
       loadingLock = true;
       try {
         setStatus(`Loading ${name}...`);
         showLoading();
-        pendingRomName = name;
         if (!worker || !workerReady) {
           currentRomData = null;
           currentRomName = '';
@@ -2350,27 +2380,7 @@
           pendingRomName = '';
           throw new Error(error?.error || 'Failed to fetch ROM');
         }
-        const arrayBuffer = await response.arrayBuffer();
-        const support = checkRomSupport(arrayBuffer);
-        if (!support.valid) {
-          hideLoading();
-          pendingRomName = '';
-          loadingLock = false;
-          return setStatus('Invalid NES file on server.', 'error');
-        }
-        if (!support.supported) {
-          hideLoading();
-          pendingRomName = '';
-          loadingLock = false;
-          return setStatus(`Unsupported ROM mapper ${support.mapperType}: ${support.mapperName}. JSNES does not support this mapper.`, 'error');
-        }
-        currentRomName = name;
-        currentRomData = arrayBuffer;
-        const transferBuffer = currentRomData.slice(0);
-        await waitForWorkerReady();
-        worker.postMessage({ type: 'loadROM', data: { romData: transferBuffer } }, [transferBuffer]);
-        createCanvas();
-        if (workerStateEl) workerStateEl.textContent = 'Loading...';
+        await loadROMData(name, await response.arrayBuffer());
       } catch (err) {
         hideLoading();
         pendingRomName = '';
@@ -2398,26 +2408,7 @@
       const reader = new FileReader();
       reader.onload = async () => {
         try {
-          const arrayBuffer = reader.result;
-          const support = checkRomSupport(arrayBuffer);
-          if (!support.valid) {
-            hideLoading();
-            loadingLock = false;
-            return setStatus('Invalid NES file (bad magic bytes).', 'error');
-          }
-          if (!support.supported) {
-            hideLoading();
-            loadingLock = false;
-            return setStatus(`Unsupported ROM mapper ${support.mapperType}: ${support.mapperName}. JSNES does not support this mapper.`, 'error');
-          }
-          pendingRomName = file.name;
-          currentRomName = file.name;
-          currentRomData = arrayBuffer;
-          const transferBuffer = currentRomData.slice(0);
-          await waitForWorkerReady();
-          worker.postMessage({ type: 'loadROM', data: { romData: transferBuffer } }, [transferBuffer]);
-          createCanvas();
-          if (workerStateEl) workerStateEl.textContent = 'Loading...';
+          await loadROMData(file.name, reader.result);
         } catch (err) {
           hideLoading();
           pendingRomName = '';
@@ -2575,8 +2566,8 @@
       return !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
     }
 
-    // Track held keys to prevent duplicate rapid-fire
-    const heldKeys = new Set();
+    // Track held keys to prevent duplicate rapid-fire (declared up with state vars)
+
     document.addEventListener('keydown', e => {
       // Ensure the game canvas has focus for input when the user is interacting with the game
       if (!isTextInputTarget(e.target)) {
@@ -2753,14 +2744,14 @@
 
     drawStaticStars();
 
-    let resizeTimeout = null;
-    window.addEventListener('resize', () => {
-      if (resizeTimeout) cancelAnimationFrame(resizeTimeout);
-      resizeTimeout = requestAnimationFrame(() => {
-        drawStaticStars();
-        resizeTimeout = null;
-      });
-    });
+     let resizeFrameId = null;
+     window.addEventListener('resize', () => {
+       if (resizeFrameId) cancelAnimationFrame(resizeFrameId);
+       resizeFrameId = requestAnimationFrame(() => {
+         drawStaticStars();
+         resizeFrameId = null;
+       });
+     });
 
     const hudEl = document.getElementById('gameHud');
     const hudRomNameEl = document.getElementById('hudRomName');
@@ -2831,12 +2822,12 @@
 
     setupCustomTooltips();
   </script>
-  <footer class="app-footer">
+  <footer>
     <div>
       <strong>Ruusian Retro Web Emulator</strong>
       <span>Built and styled by Ruusian for classic NES play.</span>
     </div>
-    <div class="footer-note">Drag-and-drop ROM support, save state export, and responsive controls.</div>
+     <div class="footer-note">Drag-and-drop ROM support, save state export, and responsive controls.</div>
   </footer>
 </body>
 </html>
