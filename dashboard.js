@@ -268,13 +268,23 @@ async function changePort(n) {
   const port = parseInt(n, 10);
   if (!port || port < 1 || port > 65535) { console.log(c('red', '✖  Invalid port.')); return; }
   const oldPort = state.port;
+  if (port === oldPort) { console.log(c('yellow', `ℹ  Port is already ${port}.`)); return; }
   const wasUp = await health(oldPort);
+  const oldPid = pidAlive(state.pid) ? state.pid : null;
+  if (oldPid && wasUp) {
+    console.log(c('dim', `Stopping server on old port ${oldPort}…`));
+    try { process.kill(oldPid, 'SIGTERM'); } catch (e) { /* gone */ }
+    for (let i = 0; i < 25 && (await health(oldPort)); i++) await sleep(400);
+    try { process.kill(oldPid, 'SIGKILL'); } catch (e) { /* gone */ }
+  }
   state.port = port;
-  if (state.pid) { state.pid = null; }
+  state.pid = null;
   saveState();
   console.log(c('green', `✔  Default port set to ${port}.`));
-  if (wasUp && port !== oldPort) {
-    console.log(c('yellow', `⚠  A server is still running on port ${oldPort}; restart it from the menu or manually.`));
+  if (wasUp && oldPid) {
+    console.log(c('yellow', `⚠  Server on old port ${oldPort} was stopped. Use "restart" to run it on the new port.`));
+  } else if (wasUp && !oldPid) {
+    console.log(c('yellow', `⚠  An external server is still running on old port ${oldPort}; stop it manually.`));
   }
 }
 

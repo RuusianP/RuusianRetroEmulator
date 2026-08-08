@@ -15,9 +15,11 @@ const {
 
 const app = express();
 
-// Respect proxy headers (e.g. in Codespaces / reverse-proxy environments)
-// This ensures express-rate-limit and req.ip work correctly when X-Forwarded-For is present.
-app.set('trust proxy', true);
+// Respect the first proxy hop (e.g. Codespaces / reverse-proxy environments).
+// Trusting exactly one hop keeps req.ip correct while still preventing clients
+// from spoofing X-Forwarded-For to bypass rate limiting. Do not set this to
+// `true` — express-rate-limit rejects it as a permissive trust boundary.
+app.set('trust proxy', 1);
 
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 // Default ROMs directory: prefer explicitly set ROMS_DIR, otherwise use workspace-level /Roms
@@ -150,8 +152,9 @@ function getSavePath(name) {
   const p = path.resolve(savesDir, path.basename(name));
   try {
     const realSavesDir = fs.realpathSync(savesDir);
-    const realP = fs.realpathSync(p);
-    if (!realP.startsWith(realSavesDir + path.sep) && realP !== realSavesDir) return null;
+    let realP = p;
+    if (fs.existsSync(p)) realP = fs.realpathSync(p);
+    if (realP !== realSavesDir && !realP.startsWith(realSavesDir + path.sep)) return null;
   } catch {
     return null;
   }

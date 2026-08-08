@@ -1540,14 +1540,10 @@
         canvas.style.imageRendering = 'pixelated';
         if (existing) existing.replaceWith(canvas);
         else document.querySelector('.display-inner')?.appendChild(canvas) || document.querySelector('.main-canvas').appendChild(canvas);
-        if (!bufferCanvas) initBufferCanvas();
         applyCanvasScale(canvas);
-        visibleCtx = canvas.getContext('2d');
-        if (visibleCtx) visibleCtx.imageSmoothingEnabled = false;
         canvas.focus();
         return canvas;
       }
-      initBufferCanvas();
       if (visible) {
         visible.setAttribute('role', 'application');
         visible.setAttribute('aria-label', 'NES game canvas');
@@ -1573,8 +1569,6 @@
         canvas.style.width = `${256 * currentScale}px`;
         canvas.style.height = `${240 * currentScale}px`;
       }
-      visibleCtx = canvas.getContext('2d');
-      if (visibleCtx) visibleCtx.imageSmoothingEnabled = false;
       if (bufferCtx) bufferCtx.imageSmoothingEnabled = false;
     }
 
