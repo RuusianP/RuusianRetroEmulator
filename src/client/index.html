@@ -1730,9 +1730,13 @@
           if (workerStateEl) workerStateEl.textContent = 'Error';
           isRunning = false;
           isPaused = false;
-          workerReady = false;
-          updateOptionStates();
-          if (currentRomData && message && message.startsWith('Frame error')) recoverEmulator();
+          if (message && message.startsWith('Frame error')) {
+            workerReady = false;
+            if (currentRomData) recoverEmulator();
+            else { resetEmulationState(); workerReady = true; }
+          } else {
+            updateOptionStates();
+          }
         }
         else if (type === 'unsupportedMapper') {
           hideLoading();
@@ -1983,6 +1987,8 @@
       placeholder.className = 'placeholder';
       placeholder.innerHTML = PLACEHOLDER_WELCOME;
       if (existing) existing.replaceWith(placeholder);
+      else document.querySelector('.display-inner')?.appendChild?.(placeholder) ||
+           document.querySelector('.main-canvas')?.appendChild?.(placeholder);
     }
 
     function hasSaveSlots() {
@@ -2026,6 +2032,7 @@
       const saving = action === 'download';
       waitForWorkerReady().then(() => {
         if (!pendingSaveAction) return;
+        if (!worker || !workerReady) return setStatus('Worker not available.', 'error');
         worker.postMessage({ type: 'saveState' });
         setStatus(saving ? 'Preparing save export...' : 'Saving state...');
         if (!saving) showToast('Saving game...', 'info', 1500);
@@ -2074,8 +2081,8 @@
          try {
            const raw = reader.result;
            const state = JSON.parse(raw);
-           if (typeof state !== 'object' || !state) {
-             return setStatus('Invalid save file format.', 'error');
+            if (typeof state !== 'object' || !state || Array.isArray(state)) {
+              return setStatus('Invalid save file format.', 'error');
            }
            if (!worker) {
              initWorker();
@@ -2327,8 +2334,8 @@
     async function fetchLocalRoms() {
       try {
         const response = await fetch('/roms/info');
-        const romInfos = await response.json();
         if (!response.ok) throw new Error('Unable to list ROMs');
+        const romInfos = await response.json();
         romsCache = romInfos;
         renderRomList(romInfos);
       } catch (err) {
