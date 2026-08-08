@@ -1806,23 +1806,24 @@
           if (btn) btn.classList.toggle('active', enabled);
         }
         else if (type === 'ready') {
-          workerReady = true;
-          worker.postMessage({ type: 'setAudio', data: { enabled: audioEnabled } });
-          worker.postMessage({ type: 'setScanlines', data: { enabled: scanlinesOn } });
-          worker.postMessage({ type: 'setTurbo', data: { multiplier: currentSpeed } });
-          if (godModeOn) worker.postMessage({ type: 'setGodMode', data: { enabled: true } });
-          if (currencyModeOn) worker.postMessage({ type: 'setCurrencyMode', data: { enabled: true } });
-          cheatsList.forEach(cheat => {
-            worker.postMessage({ type: 'addCheat', data: { address: cheat.address, value: cheat.value } });
-          });
-          if (currentRomData) {
-            pendingRomName = currentRomName || pendingRomName;
-            setStatus('Restoring ROM after recovery...', 'success');
-            const transferBuffer = currentRomData.slice(0);
-            worker.postMessage({ type: 'loadROM', data: { romData: transferBuffer } }, [transferBuffer]);
-          } else {
-            setStatus('Worker ready. Load a ROM to start.', '');
-          }
+           workerReady = true;
+           worker.postMessage({ type: 'setAudio', data: { enabled: audioEnabled } });
+           worker.postMessage({ type: 'setScanlines', data: { enabled: scanlinesOn } });
+           worker.postMessage({ type: 'setTurbo', data: { multiplier: currentSpeed } });
+           if (godModeOn) worker.postMessage({ type: 'setGodMode', data: { enabled: true } });
+           if (currencyModeOn) worker.postMessage({ type: 'setCurrencyMode', data: { enabled: true } });
+           if (currentRomData) {
+             pendingRomName = currentRomName || pendingRomName;
+             setStatus('Restoring ROM after recovery...', 'success');
+             const transferBuffer = currentRomData.slice(0);
+             worker.postMessage({ type: 'loadROM', data: { romData: transferBuffer } }, [transferBuffer]);
+             // Send cheats AFTER loadROM (which clears the cheats Map internally)
+             cheatsList.forEach(cheat => {
+               worker.postMessage({ type: 'addCheat', data: { address: cheat.address, value: cheat.value } });
+             });
+           } else {
+             setStatus('Worker ready. Load a ROM to start.', '');
+           }
           if (workerStateEl) workerStateEl.textContent = 'Ready';
           updateOptionStates();
         }
