@@ -117,6 +117,11 @@ async function startServer(verbose) {
   });
   child.unref();
   child.on('exit', (code, signal) => {
+    try {
+      fs.closeSync(fd);
+    } catch (e) {
+      /* ignore */
+    }
     if (state.pid === child.pid) state.pid = null;
     if (verbose) console.log(c('dim', `server process exited (${signal || code})`));
   });

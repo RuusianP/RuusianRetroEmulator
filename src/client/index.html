@@ -1449,7 +1449,7 @@
       const importBtn = document.getElementById('importBtn');
       if (saveBtn) saveBtn.disabled = !canSave;
       if (exportBtn) exportBtn.disabled = !canSave;
-      if (loadBtn) loadBtn.disabled = !hasSaveSlots();
+      if (loadBtn) loadBtn.disabled = !hasSaveSlots() || !isRunning;
       if (importBtn) importBtn.disabled = false;
       setPauseButtonState();
     }
@@ -1746,7 +1746,6 @@
           if (workerStateEl) workerStateEl.textContent = 'Error';
           isRunning = false;
           isPaused = false;
-          workerReady = false;
           updateOptionStates();
         }
         else if (type === 'stopped') {
@@ -2093,7 +2092,7 @@
            await waitForWorkerReady();
            worker.postMessage({ type: 'loadState', data: { state: raw } });
            createCanvas();
-           setStatus(`Imported save "${file.name}"`, 'success');
+            setStatus(`Importing save "${file.name}"...`);
          } catch (err) {
            hideLoading();
            setStatus(`Import error: ${err.message}`, 'error');
