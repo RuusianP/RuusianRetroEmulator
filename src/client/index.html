@@ -1717,6 +1717,8 @@
         }
         else if (type === 'reset') {
           setStatus('Game reset.', '');
+          cheatsList = [];
+          renderCheatsList();
           updateOptionStates();
           if (workerStateEl) workerStateEl.textContent = 'Reset';
         }
@@ -2011,7 +2013,7 @@
     }
 
     function downloadSaveState(state) {
-      const fileName = `${getSaveSlotName().replace(/\s+/g, '_') || 'nes-save'}.json`;
+      const fileName = `${getSaveSlotName().replace(/\s+/g, '_')}.json`;
       const blob = new Blob([state], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
@@ -2207,6 +2209,7 @@
     let cheatsList = [];
 
     function addCheat() {
+      if (!worker) return setStatus('Emulator not started.', 'error');
       const addrInput = document.getElementById('cheatAddr');
       const valueInput = document.getElementById('cheatValue');
       const addr = addrInput.value.trim();
@@ -2491,7 +2494,6 @@
           gainNode.connect(audioContext.destination);
         } catch (e) {
           audioEnabled = false;
-          const btn = document.getElementById('audioToggleBtn');
           if (btn) btn.textContent = '🔇 Audio';
           return setStatus('Audio not available: ' + e.message, 'error');
         }
@@ -2543,6 +2545,8 @@
       }
       currentRomName = '';
       currentRomData = null;
+      cheatsList = [];
+      renderCheatsList();
       resetEmulationState();
       updateLoadedRom();
       const canvas = document.getElementById('gameCanvas');

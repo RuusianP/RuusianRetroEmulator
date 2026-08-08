@@ -428,14 +428,12 @@ function initNES() {
           return;
         }
 
+        convertRGB24toRGBA(frameBuffer, rgbaBuffer);
+        if (scanlinesEnabled) applyScanlines(rgbaBuffer);
         if (offscreenCtx) {
-          convertRGB24toRGBA(frameBuffer, rgbaBuffer);
-          if (scanlinesEnabled) applyScanlines(rgbaBuffer);
           offscreenImageData.data.set(rgbaBuffer);
           offscreenCtx.putImageData(offscreenImageData, 0, 0);
         } else {
-          convertRGB24toRGBA(frameBuffer, rgbaBuffer);
-          if (scanlinesEnabled) applyScanlines(rgbaBuffer);
           const out = rgbaBuffer;
           rgbaBuffer = new Uint8Array(PIXEL_COUNT << 2);
           self.postMessage({ type: 'frame', frameBuffer: out }, [out.buffer]);
