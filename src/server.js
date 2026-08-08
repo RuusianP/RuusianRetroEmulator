@@ -11,12 +11,20 @@ const {
   MAPPER_NAMES: mapperNames,
   checkNESMagic,
   parseNESHeader
-} = require('./public/js/nes-data');
+} = require('./client/js/nes-data');
 
 const app = express();
 
+// Respect proxy headers (e.g. in Codespaces / reverse-proxy environments)
+// This ensures express-rate-limit and req.ip work correctly when X-Forwarded-For is present.
+app.set('trust proxy', true);
+
 const PORT = parseInt(process.env.PORT, 10) || 3000;
-const romsDir = path.resolve(__dirname, process.env.ROMS_DIR || '..', 'Roms');
+// Default ROMs directory: prefer explicitly set ROMS_DIR, otherwise use workspace-level /Roms
+const romsDir = path.resolve(
+  __dirname,
+  process.env.ROMS_DIR || path.join('..', '..', 'Roms')
+);
 const MAX_ROM_SIZE = 4 * 1024 * 1024;
 const allowedExtensions = ['.nes'];
 const ONE_HOUR = 3600;

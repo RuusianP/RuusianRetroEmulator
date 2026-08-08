@@ -1311,6 +1311,26 @@
     let activeRomName = 'No ROM loaded';
 
     const toastContainer = document.getElementById('toastContainer');
+    const DEBUG_INPUT = new URLSearchParams(location.search).get('debug') === '1';
+    let debugPanel = null;
+    function createDebugPanel() {
+      if (!DEBUG_INPUT) return;
+      debugPanel = document.createElement('div');
+      debugPanel.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:99999;padding:8px 10px;background:rgba(0,0,0,.7);color:#fff;font-size:12px;border-radius:8px;max-width:320px;line-height:1.2;opacity:0.9';
+      debugPanel.id = 'debugPanel';
+      document.body.appendChild(debugPanel);
+      updateDebugPanel();
+    }
+    function updateDebugPanel(lastEvent) {
+      if (!DEBUG_INPUT || !debugPanel) return;
+      const info = {
+        isRunning, isPaused, workerReady, useSharedInput: !!useSharedInput,
+        heldKeys: Array.from(heldKeys).join(',') || '(none)',
+        focused: (document.activeElement && (document.activeElement.id || document.activeElement.tagName)) || 'none',
+        lastEvent: lastEvent || ''
+      };
+      debugPanel.textContent = `running:${info.isRunning} paused:${info.isPaused} workerReady:${info.workerReady} shared:${info.useSharedInput}\nheld:${info.heldKeys}\nfocus:${info.focused}\nlast:${info.lastEvent}`;
+    }
 
     function showToast(message, type = 'info', duration = 3000) {
       const el = document.createElement('div');
@@ -1407,10 +1427,16 @@
     }
 
     function sendControllerInput(code, isPressed) {
-      // DEBUG: Log controller input
-      console.log(`sendControllerInput: code=${code}, isPressed=${isPressed}, isRunning=${isRunning}, isPaused=${isPaused}, worker: ${!!worker}, useSharedInput: ${useSharedInput}`);
-      if (!isRunning) return;
-      if (isPaused && isPressed) return;
+      if (!isRunning) {
+        if (DEBUG_INPUT) console.debug('sendControllerInput dropped: not running', code, isPressed);
+        updateDebugPanel(`dropped:not-running ${code}:${isPressed}`);
+        return;
+      }
+      if (isPaused && isPressed) {
+        if (DEBUG_INPUT) console.debug('sendControllerInput dropped: paused', code, isPressed);
+        updateDebugPanel(`dropped:paused ${code}:${isPressed}`);
+        return;
+      }
       if (useSharedInput && inputSharedView) {
         const offset = INPUT_KEY_OFFSETS[code];
         if (offset !== undefined) {
@@ -1421,6 +1447,7 @@
       if (worker) {
         try {
           worker.postMessage({ type: 'keyInput', data: { keyCode: code, state } });
+          if (DEBUG_INPUT) updateDebugPanel(`sent:${code}:${state}`);
         } catch (err) {
           console.warn('sendControllerInput error:', err);
         }
@@ -1508,6 +1535,8 @@
         canvas.width = 256;
         canvas.height = 240;
         canvas.tabIndex = 0;
+        canvas.setAttribute('role', 'application');
+        canvas.setAttribute('aria-label', 'NES game canvas');
         canvas.style.imageRendering = 'pixelated';
         if (existing) existing.replaceWith(canvas);
         else document.querySelector('.display-inner')?.appendChild(canvas) || document.querySelector('.main-canvas').appendChild(canvas);
@@ -1519,6 +1548,10 @@
         return canvas;
       }
       initBufferCanvas();
+      if (visible) {
+        visible.setAttribute('role', 'application');
+        visible.setAttribute('aria-label', 'NES game canvas');
+      }
       if (visible && typeof visible.focus === 'function') visible.focus();
       return visible;
     }
@@ -1624,6 +1657,9 @@
       worker = new Worker('js/emulator-worker.js');
       worker.onmessage = e => {
         const { type, frameBuffer, message, state, value, data, mapperType, mapperName } = e.data;
+        if (type === 'inputAck') {
+          if (DEBUG_INPUT) updateDebugPanel(`workerAck:${e.data.keyCode}:${e.data.state}`);
+        }
         if (type === 'frame') {
           handleFrame(frameBuffer);
         }
@@ -2530,13 +2566,15 @@
     }
 
     const keyMap = {
+      // Prefer `code` values (layout independent) but keep `key` fallbacks
       ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39,
-      w: 38, W: 38, s: 40, S: 40, a: 37, A: 37, d: 39, D: 39,
-      z: 88, Z: 88, x: 90, X: 90, i: 88, I: 88, k: 90, K: 90,
-      j: 17, J: 17, l: 13, L: 13, Enter: 13, ' ': 88,
       KeyW: 38, KeyA: 37, KeyS: 40, KeyD: 39,
       KeyZ: 88, KeyX: 90, KeyI: 88, KeyK: 90,
-      KeyJ: 17, KeyL: 13
+      KeyJ: 17, KeyL: 13, Enter: 13, Space: 88,
+      // legacy / key fallbacks
+      w: 38, W: 38, s: 40, S: 40, a: 37, A: 37, d: 39, D: 39,
+      z: 88, Z: 88, x: 90, X: 90, i: 88, I: 88, k: 90, K: 90,
+      j: 17, J: 17, l: 13, L: 13, ' ': 88
     };
 
     function isTextInputTarget(target) {
@@ -2546,11 +2584,23 @@
     // Track held keys to prevent duplicate rapid-fire
     const heldKeys = new Set();
     document.addEventListener('keydown', e => {
+      // Ensure the game canvas has focus for input when the user is interacting with the game
+      if (!isTextInputTarget(e.target)) {
+        const gameCanvasEl = document.getElementById('gameCanvas');
+        if (gameCanvasEl && gameCanvasEl.tagName === 'CANVAS' && document.activeElement !== gameCanvasEl) {
+          try { gameCanvasEl.focus(); } catch (err) {}
+        }
+      }
+
       if (isTextInputTarget(e.target)) {
         if (e.key === 'Escape') {
           e.target.blur();
         }
         return;
+      }
+      if (DEBUG_INPUT) {
+        console.debug('keydown', e.key, e.code, e.target && (e.target.id || e.target.tagName));
+        updateDebugPanel(`${e.key} (${e.code})`);
       }
       if (e.key === 'Escape') {
         if (isRunning) togglePause();
@@ -2567,7 +2617,7 @@
         if (e.key === 'l') { e.preventDefault(); loadState(); return; }
         return;
       }
-      const code = keyMap[e.key] ?? keyMap[e.code];
+      const code = keyMap[e.code] ?? keyMap[e.key];
       if (code === undefined) return;
       if (isPaused || e.repeat) return;
       e.preventDefault();
@@ -2578,14 +2628,17 @@
     }, { capture: true });
 
     document.addEventListener('keyup', e => {
-      const code = keyMap[e.key] ?? keyMap[e.code];
+      const code = keyMap[e.code] ?? keyMap[e.key];
       if (code === undefined || isTextInputTarget(e.target)) return;
       e.preventDefault();
       if (heldKeys.has(code)) {
         heldKeys.delete(code);
         sendControllerInput(code, false);
+        if (DEBUG_INPUT) updateDebugPanel(`keyup:${code}`);
       }
     }, { capture: true });
+
+    createDebugPanel();
 
     // Resume AudioContext when page becomes visible; release stuck keys when hidden
     document.addEventListener('visibilitychange', () => {
@@ -2629,22 +2682,26 @@
       const code = Number(button.dataset.code);
       button.addEventListener('pointerdown', e => {
         e.preventDefault();
+        try { if (e.pointerId && button.setPointerCapture) button.setPointerCapture(e.pointerId); } catch (err) {}
         button.classList.add('active');
         sendControllerInput(code, true);
       });
       button.addEventListener('pointerup', e => {
         e.preventDefault();
+        try { if (e.pointerId && button.releasePointerCapture) button.releasePointerCapture(e.pointerId); } catch (err) {}
         button.classList.remove('active');
         sendControllerInput(code, false);
       });
       button.addEventListener('pointerleave', e => {
         if (button.classList.contains('active')) {
+          try { if (e.pointerId && button.releasePointerCapture) button.releasePointerCapture(e.pointerId); } catch (err) {}
           button.classList.remove('active');
           sendControllerInput(code, false);
         }
       });
       button.addEventListener('pointercancel', e => {
         e.preventDefault();
+        try { if (e.pointerId && button.releasePointerCapture) button.releasePointerCapture(e.pointerId); } catch (err) {}
         button.classList.remove('active');
         sendControllerInput(code, false);
       });

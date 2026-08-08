@@ -19,6 +19,7 @@ let scanlinesEnabled = false;
 // SharedArrayBuffer for zero-latency input (main thread writes, worker reads)
 let inputBuffer = null;
 let inputView = null;
+let prevInputStates = null;
 
 const cheats = new Map();
 
@@ -114,6 +115,11 @@ self.onmessage = function(e) {
       if (data && data.inputBuffer) {
         inputBuffer = data.inputBuffer;
         inputView = new Uint8Array(inputBuffer);
+        try {
+          prevInputStates = new Uint8Array(inputView.length);
+        } catch (e) {
+          prevInputStates = null;
+        }
       }
       if (data && data.offscreen) {
         offscreenCtx = data.offscreen.getContext('2d');
@@ -258,7 +264,13 @@ self.onmessage = function(e) {
 
     case 'keyInput':
       if (data && nes && nes.keyboard) {
-        nes.keyboard.setKey(data.keyCode, data.state);
+        try {
+          nes.keyboard.setKey(data.keyCode, data.state);
+          // Acknowledge input for debugging; main thread can use this to verify delivery
+          try { self.postMessage({ type: 'inputAck', keyCode: data.keyCode, state: data.state }); } catch (e) {}
+        } catch (e) {
+          // ignore keyboard set errors
+        }
       }
       break;
 
@@ -411,9 +423,17 @@ function initNES() {
 function pollSharedInput() {
   if (!inputView || !nes || !nes.keyboard) return;
   const keys = [37, 38, 39, 40, 88, 90, 17, 13];
+  // Only call setKey when state changes to reduce work
   for (let i = 0; i < keys.length; i++) {
-    const state = inputView[i] ? 1 : 0;
-    nes.keyboard.setKey(keys[i], state);
+    const raw = inputView[i];
+    const state = raw ? 1 : 0;
+    const prev = prevInputStates ? (prevInputStates[i] ? 1 : 0) : null;
+    if (prev === null || prev !== state) {
+      try {
+        nes.keyboard.setKey(keys[i], state);
+      } catch (e) {}
+      if (prevInputStates) prevInputStates[i] = state ? 1 : 0;
+    }
   }
 }
 
