@@ -1773,7 +1773,7 @@
       };
 
       if (workerStateEl) workerStateEl.textContent = 'Initializing...';
-      const initMessage = { type: 'init' };
+      const initMessage = { type: 'init', data: {} };
       const transfer = [];
 
       useSharedInput = false;
@@ -1783,7 +1783,7 @@
         try {
           inputSharedBuffer = new SharedArrayBuffer(8);
           inputSharedView = new Uint8Array(inputSharedBuffer);
-          initMessage.inputBuffer = inputSharedBuffer;
+          initMessage.data.inputBuffer = inputSharedBuffer;
           useSharedInput = true;
         } catch (e) {
           console.warn('SharedArrayBuffer unavailable for input:', e);
@@ -1794,7 +1794,7 @@
       if (visible.transferControlToOffscreen) {
         try {
           const offscreen = visible.transferControlToOffscreen();
-          initMessage.offscreen = offscreen;
+          initMessage.data.offscreen = offscreen;
           transfer.push(offscreen);
         } catch (err) {
           console.warn('Offscreen canvas unavailable, falling back to 2D canvas', err);
