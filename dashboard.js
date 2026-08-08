@@ -15,11 +15,19 @@ const DEFAULT_PORT = 3000;
 const isTTY = Boolean(process.stdout.isTTY && process.stdin.isTTY);
 
 const COLORS = {
-  reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m',
-  red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m',
-  blue: '\x1b[34m', magenta: '\x1b[35m', cyan: '\x1b[36m',
+  reset: '\x1b[0m',
+  bold: '\x1b[1m',
+  dim: '\x1b[2m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  magenta: '\x1b[35m',
+  cyan: '\x1b[36m',
 };
-function c(code, str) { return isTTY ? COLORS[code] + str + COLORS.reset : str; }
+function c(code, str) {
+  return isTTY ? COLORS[code] + str + COLORS.reset : str;
+}
 
 let state = null;
 function loadState() {
@@ -28,23 +36,38 @@ function loadState() {
   try {
     const raw = fs.readFileSync(STATE_FILE, 'utf8');
     const parsed = JSON.parse(raw);
-    if (Number.isInteger(parsed.port) && parsed.port > 0 && parsed.port < 65536) state.port = parsed.port;
+    if (Number.isInteger(parsed.port) && parsed.port > 0 && parsed.port < 65536)
+      state.port = parsed.port;
     if (Number.isInteger(parsed.pid)) state.pid = parsed.pid;
-  } catch (e) { /* no state yet */ }
+  } catch (e) {
+    /* no state yet */
+  }
   return state;
 }
 function saveState() {
-  try { fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2)); }
-  catch (e) { /* ignore */ }
+  try {
+    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+  } catch (e) {
+    /* ignore */
+  }
 }
 
 function pidAlive(pid) {
   if (!pid) return false;
-  try { process.kill(pid, 0); return true; } catch (e) { return false; }
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
-function url(port, p) { return `http://localhost:${port}${p}`; }
+function url(port, p) {
+  return `http://localhost:${port}${p}`;
+}
 
 async function fetchJson(endpoint, opts, timeoutMs) {
   const ctrl = new AbortController();
@@ -53,19 +76,29 @@ async function fetchJson(endpoint, opts, timeoutMs) {
     const res = await fetch(endpoint, Object.assign({ signal: ctrl.signal }, opts || {}));
     const text = await res.text();
     let json = null;
-    try { json = JSON.parse(text); } catch (e) { /* not json */ }
+    try {
+      json = JSON.parse(text);
+    } catch (e) {
+      /* not json */
+    }
     return { ok: res.ok, status: res.status, json, text };
-  } finally { clearTimeout(timer); }
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function health(port) {
   try {
     const r = await fetchJson(url(port, '/health'), {}, 4000);
     return r.ok ? r.json : null;
-  } catch (e) { return null; }
+  } catch (e) {
+    return null;
+  }
 }
 
-function ensureLogDir() { fs.mkdirSync(path.dirname(LOG_FILE), { recursive: true }); }
+function ensureLogDir() {
+  fs.mkdirSync(path.dirname(LOG_FILE), { recursive: true });
+}
 
 async function startServer(verbose) {
   const port = state.port;
@@ -99,7 +132,9 @@ async function startServer(verbose) {
   }
   if (child.exitCode !== null) {
     if (verbose) {
-      console.log(c('red', `✖  Server failed to start (exit code ${child.exitCode}). Last log lines:`));
+      console.log(
+        c('red', `✖  Server failed to start (exit code ${child.exitCode}). Last log lines:`)
+      );
       tailLogs(15);
     }
   } else if (verbose) {
@@ -127,11 +162,21 @@ async function stopServer(verbose) {
     return true;
   }
   if (!managedPid) {
-    if (verbose) console.log(c('yellow', `⚠  A server is running on port ${port} but it was started outside this dashboard; refusing to kill it.`));
+    if (verbose)
+      console.log(
+        c(
+          'yellow',
+          `⚠  A server is running on port ${port} but it was started outside this dashboard; refusing to kill it.`
+        )
+      );
     return false;
   }
   if (verbose) console.log(`Stopping server (pid ${managedPid})…`);
-  try { process.kill(managedPid, 'SIGTERM'); } catch (e) { /* gone */ }
+  try {
+    process.kill(managedPid, 'SIGTERM');
+  } catch (e) {
+    /* gone */
+  }
   for (let i = 0; i < 25; i++) {
     const h = await health(port);
     if (!h) {
@@ -142,7 +187,11 @@ async function stopServer(verbose) {
     }
     await sleep(400);
   }
-  try { process.kill(managedPid, 'SIGKILL'); } catch (e) { /* gone */ }
+  try {
+    process.kill(managedPid, 'SIGKILL');
+  } catch (e) {
+    /* gone */
+  }
   state.pid = null;
   saveState();
   if (verbose) console.log(c('yellow', '⚠  Server did not stop gracefully; force killed.'));
@@ -159,25 +208,42 @@ async function statusView() {
   const h = await health(state.port);
   const managed = pidAlive(state.pid);
   if (h) {
-    console.log(c('green', `●  Server: RUNNING   port ${state.port}${managed ? `  (pid ${state.pid}, managed)` : '  (external, not managed)'}`));
+    console.log(
+      c(
+        'green',
+        `●  Server: RUNNING   port ${state.port}${managed ? `  (pid ${state.pid}, managed)` : '  (external, not managed)'}`
+      )
+    );
     console.log(`   uptime  : ${h.uptime}s`);
     console.log(`   ROMs    : ${h.roms}`);
     console.log(`   memory  : ${h.memory}`);
     console.log(`   node    : ${h.node}`);
   } else {
     console.log(c('red', `○  Server: STOPPED   port ${state.port}`));
-    if (managed) console.log(c('dim', '   (state says a process is running, but it is unresponsive)'));
+    if (managed)
+      console.log(c('dim', '   (state says a process is running, but it is unresponsive)'));
   }
 }
 
 async function listRoms() {
   const h = await health(state.port);
-  if (!h) { console.log(c('red', `✖  Server not running on port ${state.port}. Start it first.`)); return; }
+  if (!h) {
+    console.log(c('red', `✖  Server not running on port ${state.port}. Start it first.`));
+    return;
+  }
   const r = await fetchJson(url(state.port, '/roms/info'));
-  if (!r.ok || !Array.isArray(r.json)) { console.log(c('red', '✖  Failed to list ROMs.')); return; }
+  if (!r.ok || !Array.isArray(r.json)) {
+    console.log(c('red', '✖  Failed to list ROMs.'));
+    return;
+  }
   const rows = r.json;
-  if (!rows.length) { console.log('No ROMs found.'); return; }
-  console.log(`${c('bold', 'ROM')}  ${c('bold', 'SIZE')}  ${c('bold', 'MAPPER')}  ${c('bold', 'SUPPORTED')}`);
+  if (!rows.length) {
+    console.log('No ROMs found.');
+    return;
+  }
+  console.log(
+    `${c('bold', 'ROM')}  ${c('bold', 'SIZE')}  ${c('bold', 'MAPPER')}  ${c('bold', 'SUPPORTED')}`
+  );
   for (const rom of rows) {
     const name = rom.name.length > 44 ? rom.name.slice(0, 41) + '…' : rom.name;
     const size = (rom.size / 1024).toFixed(1) + 'K';
@@ -189,31 +255,51 @@ async function listRoms() {
 
 async function uploadRom(filePath) {
   const h = await health(state.port);
-  if (!h) { console.log(c('red', `✖  Server not running on port ${state.port}. Start it first.`)); return; }
+  if (!h) {
+    console.log(c('red', `✖  Server not running on port ${state.port}. Start it first.`));
+    return;
+  }
   const abs = path.resolve(filePath);
-  if (!fs.existsSync(abs)) { console.log(c('red', `✖  File not found: ${filePath}`)); return; }
+  if (!fs.existsSync(abs)) {
+    console.log(c('red', `✖  File not found: ${filePath}`));
+    return;
+  }
   const buf = fs.readFileSync(abs);
   const form = new FormData();
   form.append('rom', new Blob([buf]), path.basename(abs));
   const r = await fetchJson(url(state.port, '/roms/upload'), { method: 'POST', body: form }, 30000);
-  if (r.ok) console.log(c('green', `✔  Uploaded ${r.json.name} (${(r.json.size / 1024).toFixed(1)}K).`));
+  if (r.ok)
+    console.log(c('green', `✔  Uploaded ${r.json.name} (${(r.json.size / 1024).toFixed(1)}K).`));
   else console.log(c('red', `✖  Upload failed: ${(r.json && r.json.error) || r.text}`));
 }
 
 async function deleteRom(name) {
-  const r = await fetchJson(url(state.port, `/roms/delete?name=${encodeURIComponent(name)}`), { method: 'DELETE' });
+  const r = await fetchJson(url(state.port, `/roms/delete?name=${encodeURIComponent(name)}`), {
+    method: 'DELETE',
+  });
   if (r.ok) console.log(c('green', `✔  Deleted ${name}.`));
   else console.log(c('red', `✖  Delete failed: ${(r.json && r.json.error) || r.text}`));
 }
 
 async function listSaves() {
   const h = await health(state.port);
-  if (!h) { console.log(c('red', `✖  Server not running on port ${state.port}. Start it first.`)); return; }
+  if (!h) {
+    console.log(c('red', `✖  Server not running on port ${state.port}. Start it first.`));
+    return;
+  }
   const r = await fetchJson(url(state.port, '/api/saves'));
-  if (!r.ok || !Array.isArray(r.json)) { console.log(c('red', '✖  Failed to list saves.')); return; }
-  if (!r.json.length) { console.log('No server-side saves found.'); return; }
+  if (!r.ok || !Array.isArray(r.json)) {
+    console.log(c('red', '✖  Failed to list saves.'));
+    return;
+  }
+  if (!r.json.length) {
+    console.log('No server-side saves found.');
+    return;
+  }
   for (const s of r.json) {
-    console.log(`${c('green', s.name)}  ${(s.size / 1024).toFixed(1)}K  ${new Date(s.modified).toLocaleString()}`);
+    console.log(
+      `${c('green', s.name)}  ${(s.size / 1024).toFixed(1)}K  ${new Date(s.modified).toLocaleString()}`
+    );
   }
 }
 
@@ -232,7 +318,11 @@ function followLog() {
   ensureLogDir();
   if (logFollowInterval) clearInterval(logFollowInterval);
   let pos = 0;
-  try { pos = fs.statSync(LOG_FILE).size; } catch (e) { /* new */ }
+  try {
+    pos = fs.statSync(LOG_FILE).size;
+  } catch (e) {
+    /* new */
+  }
   console.log(c('dim', 'Following logs (press q or Ctrl+C to stop)…'));
   logFollowInterval = setInterval(() => {
     try {
@@ -245,7 +335,9 @@ function followLog() {
         pos = size;
         process.stdout.write(buf.toString('utf8'));
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      /* ignore */
+    }
   }, 500);
   logFollowInterval.unref();
 }
@@ -273,25 +365,49 @@ function openBrowser() {
 
 async function changePort(n) {
   const port = parseInt(n, 10);
-  if (!port || port < 1 || port > 65535) { console.log(c('red', '✖  Invalid port.')); return; }
+  if (!port || port < 1 || port > 65535) {
+    console.log(c('red', '✖  Invalid port.'));
+    return;
+  }
   const oldPort = state.port;
-  if (port === oldPort) { console.log(c('yellow', `ℹ  Port is already ${port}.`)); return; }
+  if (port === oldPort) {
+    console.log(c('yellow', `ℹ  Port is already ${port}.`));
+    return;
+  }
   const wasUp = await health(oldPort);
   const oldPid = pidAlive(state.pid) ? state.pid : null;
   if (oldPid && wasUp) {
     console.log(c('dim', `Stopping server on old port ${oldPort}…`));
-    try { process.kill(oldPid, 'SIGTERM'); } catch (e) { /* gone */ }
+    try {
+      process.kill(oldPid, 'SIGTERM');
+    } catch (e) {
+      /* gone */
+    }
     for (let i = 0; i < 25 && (await health(oldPort)); i++) await sleep(400);
-    try { process.kill(oldPid, 'SIGKILL'); } catch (e) { /* gone */ }
+    try {
+      process.kill(oldPid, 'SIGKILL');
+    } catch (e) {
+      /* gone */
+    }
   }
   state.port = port;
   state.pid = null;
   saveState();
   console.log(c('green', `✔  Default port set to ${port}.`));
   if (wasUp && oldPid) {
-    console.log(c('yellow', `⚠  Server on old port ${oldPort} was stopped. Use "restart" to run it on the new port.`));
+    console.log(
+      c(
+        'yellow',
+        `⚠  Server on old port ${oldPort} was stopped. Use "restart" to run it on the new port.`
+      )
+    );
   } else if (wasUp && !oldPid) {
-    console.log(c('yellow', `⚠  An external server is still running on old port ${oldPort}; stop it manually.`));
+    console.log(
+      c(
+        'yellow',
+        `⚠  An external server is still running on old port ${oldPort}; stop it manually.`
+      )
+    );
   }
 }
 
@@ -302,25 +418,45 @@ async function changePort(n) {
 async function runCommand(args) {
   const cmd = (args[0] || '').toLowerCase();
   switch (cmd) {
-    case 'start': return startServer(true);
-    case 'stop': return stopServer(true);
-    case 'restart': return restartServer();
-    case 'status': return statusView();
-    case 'roms': return listRoms();
-    case 'saves': return listSaves();
-    case 'logs': return tailLogs(parseInt(args[1], 10) || 40);
-    case 'logsfollow': followLog(); return true;
-    case 'open': openBrowser(); return true;
+    case 'start':
+      return startServer(true);
+    case 'stop':
+      return stopServer(true);
+    case 'restart':
+      return restartServer();
+    case 'status':
+      return statusView();
+    case 'roms':
+      return listRoms();
+    case 'saves':
+      return listSaves();
+    case 'logs':
+      return tailLogs(parseInt(args[1], 10) || 40);
+    case 'logsfollow':
+      followLog();
+      return true;
+    case 'open':
+      openBrowser();
+      return true;
     case 'port': {
-      if (!args[1]) { console.log(`Current port: ${state.port}`); return true; }
+      if (!args[1]) {
+        console.log(`Current port: ${state.port}`);
+        return true;
+      }
       return changePort(args[1]);
     }
     case 'upload': {
-      if (!args[1]) { console.log('Usage: dashboard upload <path-to-rom.nes>'); return true; }
+      if (!args[1]) {
+        console.log('Usage: dashboard upload <path-to-rom.nes>');
+        return true;
+      }
       return uploadRom(args.slice(1).join(' '));
     }
     case 'delete': {
-      if (!args[1]) { console.log('Usage: dashboard delete <rom-name.nes>'); return true; }
+      if (!args[1]) {
+        console.log('Usage: dashboard delete <rom-name.nes>');
+        return true;
+      }
       return deleteRom(args.slice(1).join(' '));
     }
     case 'help':
@@ -359,15 +495,22 @@ function printHelp() {
 // ---------------------------------------------------------------------------
 
 const stdin = process.stdin;
-let mode = 'menu';          // 'menu' | 'prompt' | 'logs'
+let mode = 'menu'; // 'menu' | 'prompt' | 'logs'
 let promptHandler = null;
 let menu = null;
 let cursor = 0;
 let history = [];
 
-function clearScreen() { process.stdout.write('\x1b[2J\x1b[H'); }
+function clearScreen() {
+  process.stdout.write('\x1b[2J\x1b[H');
+}
 
-function pushMenu(m) { if (menu) history.push(menu); menu = m; cursor = 0; render(); }
+function pushMenu(m) {
+  if (menu) history.push(menu);
+  menu = m;
+  cursor = 0;
+  render();
+}
 function goBack() {
   menu = history.pop() || null;
   cursor = 0;
@@ -378,7 +521,12 @@ function goBack() {
 async function currentStatusLine() {
   const h = await health(state.port);
   const managed = pidAlive(state.pid);
-  if (h) return c('green', `● running`) + c('dim', `  · port ${state.port} · ${h.uptime}s up · ${h.roms} ROM(s) · ${h.memory}`) + (managed ? c('dim', '  · managed') : c('dim', '  · external'));
+  if (h)
+    return (
+      c('green', `● running`) +
+      c('dim', `  · port ${state.port} · ${h.uptime}s up · ${h.roms} ROM(s) · ${h.memory}`) +
+      (managed ? c('dim', '  · managed') : c('dim', '  · external'))
+    );
   return c('red', '○ stopped') + c('dim', `  · port ${state.port}`);
 }
 
@@ -406,14 +554,68 @@ function buildMainMenu() {
   return {
     title: 'Main menu',
     options: [
-      { index: 1, label: '▶ Start server', run: async () => { await startServer(true); render(); } },
-      { index: 2, label: '■ Stop server', run: async () => { await stopServer(true); render(); } },
-      { index: 3, label: '↻ Restart server', run: async () => { await restartServer(); render(); } },
-      { index: 4, label: 'ℹ Status / health', run: async () => { await statusView(); await waitKey(); render(); } },
+      {
+        index: 1,
+        label: '▶ Start server',
+        run: async () => {
+          await startServer(true);
+          render();
+        },
+      },
+      {
+        index: 2,
+        label: '■ Stop server',
+        run: async () => {
+          await stopServer(true);
+          render();
+        },
+      },
+      {
+        index: 3,
+        label: '↻ Restart server',
+        run: async () => {
+          await restartServer();
+          render();
+        },
+      },
+      {
+        index: 4,
+        label: 'ℹ Status / health',
+        run: async () => {
+          await statusView();
+          await waitKey();
+          render();
+        },
+      },
       { index: 5, label: '🎮 ROM manager', run: () => pushMenu(buildRomsMenu()) },
-      { index: 6, label: '💾 Save states (server-side)', run: async () => { await listSaves(); await waitKey(); render(); } },
-      { index: 7, label: '📜 Live logs', run: () => { tailLogs(40); followLog(); mode = 'logs'; console.log(c('dim', 'Press q or Ctrl+C to return…')); } },
-      { index: 8, label: '🌐 Open in browser', run: async () => { openBrowser(); await sleep(300); render(); } },
+      {
+        index: 6,
+        label: '💾 Save states (server-side)',
+        run: async () => {
+          await listSaves();
+          await waitKey();
+          render();
+        },
+      },
+      {
+        index: 7,
+        label: '📜 Live logs',
+        run: () => {
+          tailLogs(40);
+          followLog();
+          mode = 'logs';
+          console.log(c('dim', 'Press q or Ctrl+C to return…'));
+        },
+      },
+      {
+        index: 8,
+        label: '🌐 Open in browser',
+        run: async () => {
+          openBrowser();
+          await sleep(300);
+          render();
+        },
+      },
       { index: 9, label: '🔧 Change port', run: () => pushMenu(buildPortMenu()) },
       { index: 0, label: 'Exit', run: () => quit(0) },
     ],
@@ -424,21 +626,43 @@ function buildRomsMenu() {
   return {
     title: 'ROM manager',
     options: [
-      { index: 1, label: 'List ROMs', run: async () => { await listRoms(); await waitKey(); render(); } },
-      { index: 2, label: 'Upload ROM (.nes)', run: async () => {
+      {
+        index: 1,
+        label: 'List ROMs',
+        run: async () => {
+          await listRoms();
+          await waitKey();
+          render();
+        },
+      },
+      {
+        index: 2,
+        label: 'Upload ROM (.nes)',
+        run: async () => {
           try {
             const p = await askLine('Path to .nes file:');
             await uploadRom(p);
-          } catch (e) { console.log(c('dim', '(cancelled)')); }
-          await waitKey(); render();
-      } },
-      { index: 3, label: 'Delete ROM', run: async () => {
+          } catch (e) {
+            console.log(c('dim', '(cancelled)'));
+          }
+          await waitKey();
+          render();
+        },
+      },
+      {
+        index: 3,
+        label: 'Delete ROM',
+        run: async () => {
           try {
             const n = await askLine('ROM name:');
             await deleteRom(n);
-          } catch (e) { console.log(c('dim', '(cancelled)')); }
-          await waitKey(); render();
-      } },
+          } catch (e) {
+            console.log(c('dim', '(cancelled)'));
+          }
+          await waitKey();
+          render();
+        },
+      },
       { index: 0, label: '← Back', run: () => goBack() },
     ],
   };
@@ -448,21 +672,35 @@ function buildPortMenu() {
   return {
     title: 'Change port (current: ' + state.port + ')',
     options: [
-      { index: 1, label: 'Set port', run: async () => {
+      {
+        index: 1,
+        label: 'Set port',
+        run: async () => {
           try {
             const p = await askLine('New port:');
             await changePort(p);
-          } catch (e) { console.log(c('dim', '(cancelled)')); }
-          await waitKey(); render();
-      } },
-      { index: 2, label: 'Restart server on new port', run: async () => { await restartServer(); render(); } },
+          } catch (e) {
+            console.log(c('dim', '(cancelled)'));
+          }
+          await waitKey();
+          render();
+        },
+      },
+      {
+        index: 2,
+        label: 'Restart server on new port',
+        run: async () => {
+          await restartServer();
+          render();
+        },
+      },
       { index: 0, label: '← Back', run: () => goBack() },
     ],
   };
 }
 
 function waitKey() {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const onKey = (_str, _key) => {
       stdin.removeListener('keypress', onKey);
       resolve();
@@ -485,7 +723,10 @@ function askLine(question) {
         promptHandler = null;
         resolve(buf);
       } else if (key && key.name === 'backspace') {
-        if (buf.length) { buf = buf.slice(0, -1); process.stdout.write('\b \b'); }
+        if (buf.length) {
+          buf = buf.slice(0, -1);
+          process.stdout.write('\b \b');
+        }
       } else if (key && key.name === 'escape') {
         process.stdout.write('\n');
         promptHandler = null;
@@ -503,12 +744,16 @@ function onKeypress(str, key) {
     if (promptHandler) promptHandler(str, key);
     return;
   }
-   if (mode === 'logs') {
-     if (key && key.ctrl && key.name === 'c') { stopLogFollow(); mode = 'menu'; quit(0); }
-     if ((key && key.name === 'q') || (key && key.name === 'return')) {
-       stopLogFollow();
-       mode = 'menu';
-       render();
+  if (mode === 'logs') {
+    if (key && key.ctrl && key.name === 'c') {
+      stopLogFollow();
+      mode = 'menu';
+      quit(0);
+    }
+    if ((key && key.name === 'q') || (key && key.name === 'return')) {
+      stopLogFollow();
+      mode = 'menu';
+      render();
     }
     return;
   }
@@ -518,9 +763,13 @@ function onKeypress(str, key) {
 
   if (!menu) return;
 
-  if (key && key.name === 'up') { cursor = (cursor - 1 + menu.options.length) % menu.options.length; render(); }
-  else if (key && key.name === 'down') { cursor = (cursor + 1) % menu.options.length; render(); }
-  else if (key && key.name === 'return') {
+  if (key && key.name === 'up') {
+    cursor = (cursor - 1 + menu.options.length) % menu.options.length;
+    render();
+  } else if (key && key.name === 'down') {
+    cursor = (cursor + 1) % menu.options.length;
+    render();
+  } else if (key && key.name === 'return') {
     const opt = menu.options[cursor];
     if (opt && opt.run) opt.run();
   } else if (key && (key.name === 'escape' || key.name === 'backspace')) {
@@ -528,8 +777,11 @@ function onKeypress(str, key) {
     else render();
   } else if (str && /^[0-9]$/.test(str)) {
     const idx = parseInt(str, 10);
-    const opt = menu.options.find(o => o.index === idx);
-    if (opt) { cursor = menu.options.indexOf(opt); if (opt.run) opt.run(); }
+    const opt = menu.options.find((o) => o.index === idx);
+    if (opt) {
+      cursor = menu.options.indexOf(opt);
+      if (opt.run) opt.run();
+    }
   } else if (key && key.name === 'q') {
     quit(0);
   }
@@ -537,7 +789,11 @@ function onKeypress(str, key) {
 
 function quit(code) {
   stopLogFollow();
-  try { process.stdin.setRawMode(false); } catch (e) { /* ignore */ }
+  try {
+    process.stdin.setRawMode(false);
+  } catch (e) {
+    /* ignore */
+  }
   process.stdin.pause();
   process.exit(code);
 }
@@ -567,7 +823,7 @@ async function interactive() {
   } else {
     printHelp();
   }
-})().catch(err => {
+})().catch((err) => {
   console.error('dashboard error:', err.message || err);
   process.exit(1);
 });

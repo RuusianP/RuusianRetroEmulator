@@ -3,7 +3,9 @@ const FRAME_INTERVAL = 1000 / 60;
 const AUDIO_BUFFER_SIZE = 4096;
 
 const SCANLINES_LUT = new Uint8Array(256);
-(() => { for (let i = 0; i < 256; i++) SCANLINES_LUT[i] = (i * 0.6) | 0; })();
+(() => {
+  for (let i = 0; i < 256; i++) SCANLINES_LUT[i] = (i * 0.6) | 0;
+})();
 
 let nes = null;
 let isRunning = false;
@@ -34,30 +36,29 @@ function applyCheats() {
 }
 
 const GOD_LIVES_ADDRESSES = [
-  0x00A0, 0x00B0, 0x00C0, 0x00D0, 0x00E0, 0x00F0, 0x00F5, 0x0100,
-  0x01A0, 0x01F5, 0x04A0, 0x04F5, 0x05A0, 0x05F5, 0x0640, 0x06A0,
-  0x06F5, 0x075A, 0x07A0, 0x07F5
+  0x00a0, 0x00b0, 0x00c0, 0x00d0, 0x00e0, 0x00f0, 0x00f5, 0x0100, 0x01a0, 0x01f5, 0x04a0, 0x04f5,
+  0x05a0, 0x05f5, 0x0640, 0x06a0, 0x06f5, 0x075a, 0x07a0, 0x07f5,
 ];
 const GOD_HEALTH_ADDRESSES = [
-  0x00A1, 0x00A2, 0x00B1, 0x00C1, 0x00D1, 0x00E1, 0x00F1, 0x00F2,
-  0x0101, 0x04A1, 0x04F1, 0x05A1, 0x05F1, 0x0641, 0x06A1, 0x06F1,
-  0x0700, 0x0701, 0x057C, 0x067C, 0x077C
+  0x00a1, 0x00a2, 0x00b1, 0x00c1, 0x00d1, 0x00e1, 0x00f1, 0x00f2, 0x0101, 0x04a1, 0x04f1, 0x05a1,
+  0x05f1, 0x0641, 0x06a1, 0x06f1, 0x0700, 0x0701, 0x057c, 0x067c, 0x077c,
 ];
 const CURRENCY_ADDRESSES = [
-  0x00B5, 0x00C5, 0x00D5, 0x00E5, 0x03E0, 0x03E1, 0x04B0, 0x04B1,
-  0x05B0, 0x05B1, 0x06B0, 0x06B1, 0x07B0, 0x07B1, 0x075E, 0x075F,
-  0x066B, 0x066C, 0x0505, 0x0605, 0x0705, 0x04F0, 0x05F0, 0x06F0
+  0x00b5, 0x00c5, 0x00d5, 0x00e5, 0x03e0, 0x03e1, 0x04b0, 0x04b1, 0x05b0, 0x05b1, 0x06b0, 0x06b1,
+  0x07b0, 0x07b1, 0x075e, 0x075f, 0x066b, 0x066c, 0x0505, 0x0605, 0x0705, 0x04f0, 0x05f0, 0x06f0,
 ];
 const GOD_LIVES_VALUE = 0x09;
-const GOD_HEALTH_VALUE = 0xFF;
+const GOD_HEALTH_VALUE = 0xff;
 const CURRENCY_VALUE = 0x99;
 
 function applyUniversalMods() {
   if ((!godMode && !currencyMode) || !nes || !nes.cpu || !nes.cpu.mem) return;
   const mem = nes.cpu.mem;
   if (godMode) {
-    for (let i = 0; i < GOD_LIVES_ADDRESSES.length; i++) mem[GOD_LIVES_ADDRESSES[i]] = GOD_LIVES_VALUE;
-    for (let i = 0; i < GOD_HEALTH_ADDRESSES.length; i++) mem[GOD_HEALTH_ADDRESSES[i]] = GOD_HEALTH_VALUE;
+    for (let i = 0; i < GOD_LIVES_ADDRESSES.length; i++)
+      mem[GOD_LIVES_ADDRESSES[i]] = GOD_LIVES_VALUE;
+    for (let i = 0; i < GOD_HEALTH_ADDRESSES.length; i++)
+      mem[GOD_HEALTH_ADDRESSES[i]] = GOD_HEALTH_VALUE;
   }
   if (currencyMode) {
     for (let i = 0; i < CURRENCY_ADDRESSES.length; i++) mem[CURRENCY_ADDRESSES[i]] = CURRENCY_VALUE;
@@ -118,7 +119,7 @@ function stopFrameLoop() {
   cancelScheduledFrame();
 }
 
-self.onmessage = function(e) {
+self.onmessage = function (e) {
   if (!e || !e.data) return;
   const { type, data } = e.data;
 
@@ -145,9 +146,15 @@ self.onmessage = function(e) {
         break;
       }
       if (offscreenCtx) {
-        self.postMessage({ type: 'hwReady', message: 'Offscreen canvas rendering enabled' + (inputBuffer ? ' + SharedInput' : '') });
+        self.postMessage({
+          type: 'hwReady',
+          message: 'Offscreen canvas rendering enabled' + (inputBuffer ? ' + SharedInput' : ''),
+        });
       } else {
-        self.postMessage({ type: 'hwReady', message: 'Standard rendering mode active' + (inputBuffer ? ' + SharedInput' : '') });
+        self.postMessage({
+          type: 'hwReady',
+          message: 'Standard rendering mode active' + (inputBuffer ? ' + SharedInput' : ''),
+        });
       }
       break;
 
@@ -164,10 +171,12 @@ self.onmessage = function(e) {
           if (typeof romData !== 'string' || romData.length < 16) {
             throw new Error('Invalid ROM data format or size');
           }
-          if (romData.charCodeAt(0) !== 0x4E ||
-              romData.charCodeAt(1) !== 0x45 ||
-              romData.charCodeAt(2) !== 0x53 ||
-              romData.charCodeAt(3) !== 0x1A) {
+          if (
+            romData.charCodeAt(0) !== 0x4e ||
+            romData.charCodeAt(1) !== 0x45 ||
+            romData.charCodeAt(2) !== 0x53 ||
+            romData.charCodeAt(3) !== 0x1a
+          ) {
             throw new Error('Invalid NES ROM header');
           }
           cheats.clear();
@@ -188,7 +197,7 @@ self.onmessage = function(e) {
               type: 'unsupportedMapper',
               mapperType,
               mapperName: unsupportedMatch[1].trim(),
-              message: `Unsupported mapper ${mapperType}: ${unsupportedMatch[1].trim()}`
+              message: `Unsupported mapper ${mapperType}: ${unsupportedMatch[1].trim()}`,
             });
           } else {
             self.postMessage({ type: 'error', message: 'ROM load failed: ' + message });
@@ -204,7 +213,10 @@ self.onmessage = function(e) {
       if (!nes) {
         self.postMessage({ type: 'error', message: 'Emulator not initialized' });
       } else if (typeof nes.toJSON !== 'function') {
-        self.postMessage({ type: 'error', message: 'Emulator does not support state serialization' });
+        self.postMessage({
+          type: 'error',
+          message: 'Emulator does not support state serialization',
+        });
       } else {
         try {
           const nesState = nes.toJSON();
@@ -282,7 +294,9 @@ self.onmessage = function(e) {
         try {
           nes.keyboard.setKey(data.keyCode, data.state);
           // Acknowledge input for debugging; main thread can use this to verify delivery
-          try { self.postMessage({ type: 'inputAck', keyCode: data.keyCode, state: data.state }); } catch (e) {}
+          try {
+            self.postMessage({ type: 'inputAck', keyCode: data.keyCode, state: data.state });
+          } catch (e) {}
         } catch (e) {
           // ignore keyboard set errors
         }
@@ -290,7 +304,10 @@ self.onmessage = function(e) {
       break;
 
     case 'setTurbo':
-      turboMultiplier = (data && Number.isInteger(data.multiplier) && data.multiplier >= 1 && data.multiplier <= 4) ? data.multiplier : 1;
+      turboMultiplier =
+        data && Number.isInteger(data.multiplier) && data.multiplier >= 1 && data.multiplier <= 4
+          ? data.multiplier
+          : 1;
       self.postMessage({ type: 'turboSet', multiplier: turboMultiplier });
       break;
 
@@ -323,7 +340,7 @@ self.onmessage = function(e) {
         if (!data || !data.address || !data.value) break;
         const addr = parseInt(data.address, 16);
         const value = parseInt(data.value, 16);
-        if (isNaN(addr) || isNaN(value) || addr < 0 || addr > 0xFFFF) {
+        if (isNaN(addr) || isNaN(value) || addr < 0 || addr > 0xffff) {
           self.postMessage({ type: 'error', message: 'Invalid cheat address or value' });
           break;
         }
@@ -352,7 +369,10 @@ self.onmessage = function(e) {
       {
         const cheatList = [];
         cheats.forEach((value, addr) => {
-          cheatList.push({ address: addr.toString(16).toUpperCase().padStart(4, '0'), value: value.toString(16).toUpperCase().padStart(2, '0') });
+          cheatList.push({
+            address: addr.toString(16).toUpperCase().padStart(4, '0'),
+            value: value.toString(16).toUpperCase().padStart(2, '0'),
+          });
         });
         self.postMessage({ type: 'cheatsList', cheats: cheatList });
       }
@@ -368,9 +388,9 @@ function convertRGB24toRGBA(src, dst) {
   for (let i = 0; i < PIXEL_COUNT; i++) {
     const p = src[i];
     const off = i << 2;
-    dst[off]     = p & 0xFF;
-    dst[off + 1] = (p >> 8) & 0xFF;
-    dst[off + 2] = (p >> 16) & 0xFF;
+    dst[off] = p & 0xff;
+    dst[off + 1] = (p >> 8) & 0xff;
+    dst[off + 2] = (p >> 16) & 0xff;
     dst[off + 3] = 255;
   }
 }
@@ -379,7 +399,7 @@ function applyScanlines(buf) {
   for (let y = 1; y < 240; y += 2) {
     const row = y << 10;
     for (let x = 0; x < 1024; x += 4) {
-      buf[row + x]     = SCANLINES_LUT[buf[row + x]];
+      buf[row + x] = SCANLINES_LUT[buf[row + x]];
       buf[row + x + 1] = SCANLINES_LUT[buf[row + x + 1]];
       buf[row + x + 2] = SCANLINES_LUT[buf[row + x + 2]];
     }
@@ -388,7 +408,10 @@ function applyScanlines(buf) {
 
 function initNES() {
   if (!jsnesLoaded) {
-    self.postMessage({ type: 'error', message: 'JSNES library not loaded. Check the console for import errors.' });
+    self.postMessage({
+      type: 'error',
+      message: 'JSNES library not loaded. Check the console for import errors.',
+    });
     return;
   }
   const JSNES = self.jsnes?.NES || self.JSNES;
@@ -402,7 +425,7 @@ function initNES() {
 
   try {
     nes = new JSNES({
-      onFrame: function(frameBuffer) {
+      onFrame: function (frameBuffer) {
         if (!frameBuffer || frameBuffer.length !== PIXEL_COUNT) {
           return;
         }
@@ -420,7 +443,7 @@ function initNES() {
           self.postMessage({ type: 'frame', frameBuffer: out }, [out.buffer]);
         }
       },
-      onAudioSample: function(left, right) {
+      onAudioSample: function (left, right) {
         if (!audioEnabled) return;
         audioBuffer.push(left, right);
         if (audioBuffer.length >= AUDIO_BUFFER_SIZE) {
@@ -428,7 +451,7 @@ function initNES() {
           audioBuffer = [];
           self.postMessage({ type: 'audio', data: { samples, sampleRate: 44100 } });
         }
-      }
+      },
     });
   } catch (err) {
     self.postMessage({ type: 'error', message: 'Failed to initialize JSNES: ' + err.message });

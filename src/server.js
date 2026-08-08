@@ -10,7 +10,7 @@ const {
   SUPPORTED_MAPPER_IDS: supportedMapperIds,
   MAPPER_NAMES: mapperNames,
   checkNESMagic,
-  parseNESHeader
+  parseNESHeader,
 } = require('./client/js/nes-data');
 
 const app = express();
@@ -23,10 +23,7 @@ app.set('trust proxy', 1);
 
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 // Default ROMs directory: prefer explicitly set ROMS_DIR, otherwise use workspace-level /Roms
-const romsDir = path.resolve(
-  __dirname,
-  process.env.ROMS_DIR || path.join('..', '..', 'Roms')
-);
+const romsDir = path.resolve(__dirname, process.env.ROMS_DIR || path.join('..', '..', 'Roms'));
 const MAX_ROM_SIZE = 4 * 1024 * 1024;
 const allowedExtensions = ['.nes'];
 const ONE_HOUR = 3600;
@@ -38,22 +35,24 @@ function isRomFile(filename) {
 }
 
 app.use(compression({ level: 6, threshold: 256 }));
-app.use(morgan('dev', { skip: req => req.url === '/health' }));
+app.use(morgan('dev', { skip: (req) => req.url === '/health' }));
 
-app.use(helmet({
-  crossOriginOpenerPolicy: { policy: 'same-origin' },
-  crossOriginEmbedderPolicy: { policy: 'require-corp' },
-  contentSecurityPolicy: false,
-}));
+app.use(
+  helmet({
+    crossOriginOpenerPolicy: { policy: 'same-origin' },
+    crossOriginEmbedderPolicy: { policy: 'require-corp' },
+    contentSecurityPolicy: false,
+  })
+);
 
 const ALLOWED_ORIGIN_PATTERNS = [
   /^https?:\/\/localhost(:\d+)?$/,
   /\.github\.dev$/,
-  /\.preview\.app\.github\.dev$/
+  /\.preview\.app\.github\.dev$/,
 ];
 
 function isAllowedOrigin(origin) {
-  return ALLOWED_ORIGIN_PATTERNS.some(pattern => pattern.test(origin));
+  return ALLOWED_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin));
 }
 
 app.use((req, res, next) => {
@@ -104,7 +103,7 @@ const upload = multer({
         return cb(null, `${base} (${n})${ext}`);
       }
       cb(null, finalName);
-    }
+    },
   }),
   limits: { fileSize: MAX_ROM_SIZE },
   fileFilter: (req, file, cb) => {
@@ -112,7 +111,7 @@ const upload = multer({
       return cb(new Error('Only .nes files are allowed'), false);
     }
     cb(null, true);
-  }
+  },
 });
 
 const limiter = rateLimit({
@@ -120,17 +119,20 @@ const limiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests, slow down.' }
+  message: { error: 'Too many requests, slow down.' },
 });
 app.use('/roms/', limiter);
 
-app.use('/api/saves', rateLimit({
-  windowMs: 60 * 1000,
-  max: 60,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many save requests.' }
-}));
+app.use(
+  '/api/saves',
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many save requests.' },
+  })
+);
 
 let romsInfoCache = null;
 let romsInfoCacheMtime = null;
@@ -142,7 +144,7 @@ function getCachedRomCount() {
   if (romsCountCache < 0 || now - romsCountCacheTime > 10000) {
     try {
       if (fs.existsSync(romsDir)) {
-        romsCountCache = fs.readdirSync(romsDir).filter(f => isRomFile(f)).length;
+        romsCountCache = fs.readdirSync(romsDir).filter((f) => isRomFile(f)).length;
       } else {
         romsCountCache = 0;
       }
@@ -188,19 +190,34 @@ function getRomsDirMtime() {
 }
 
 const romDescriptions = {
-  'Castlevania (USA) (Rev-A).nes': 'Classic action-platformer. Hunt Dracula through CastleVania. UNROM (mapper 2) — supported.',
-  "Castlevania II - Simon's Quest (USA).nes": 'Open-world Castlevania sequel with day/night cycle. MMC1 (mapper 1) — supported.',
-  'Legend of Zelda, The (USA).nes': 'Foundational action-adventure. Explore Hyrule, defeat Ganon. MMC1 (mapper 1) — supported.',
-  'Super Mario Bros. (Japan, USA).nes': 'The iconic platformer. Save Princess Peach from Bowser. NROM (mapper 0) — fully supported.'
+  'Castlevania (USA) (Rev-A).nes':
+    'Classic action-platformer. Hunt Dracula through CastleVania. UNROM (mapper 2) — supported.',
+  "Castlevania II - Simon's Quest (USA).nes":
+    'Open-world Castlevania sequel with day/night cycle. MMC1 (mapper 1) — supported.',
+  'Legend of Zelda, The (USA).nes':
+    'Foundational action-adventure. Explore Hyrule, defeat Ganon. MMC1 (mapper 1) — supported.',
+  'Super Mario Bros. (Japan, USA).nes':
+    'The iconic platformer. Save Princess Peach from Bowser. NROM (mapper 0) — fully supported.',
 };
 
 function buildRomsInfo() {
   const results = [];
   if (!fs.existsSync(romsDir)) return results;
-  const files = fs.readdirSync(romsDir).filter(f => isRomFile(f)).sort((a, b) => a.localeCompare(b));
+  const files = fs
+    .readdirSync(romsDir)
+    .filter((f) => isRomFile(f))
+    .sort((a, b) => a.localeCompare(b));
   for (const name of files) {
     const filePath = path.resolve(romsDir, name);
-    const info = { name, size: 0, valid: false, mapperType: null, mapperName: 'Unknown', supported: false, description: romDescriptions[name] || null };
+    const info = {
+      name,
+      size: 0,
+      valid: false,
+      mapperType: null,
+      mapperName: 'Unknown',
+      supported: false,
+      description: romDescriptions[name] || null,
+    };
     try {
       const stat = fs.statSync(filePath);
       info.size = stat.size;
@@ -242,14 +259,16 @@ function invalidateRomsInfoCache() {
   romsInfoCacheMtime = null;
 }
 
-app.use(express.static(path.join(__dirname, 'client'), {
-  maxAge: process.env.NODE_ENV === 'production' ? ONE_DAY * 1000 : 0,
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.html')) {
-      res.setHeader('Cache-Control', 'no-cache');
-    }
-  }
-}));
+app.use(
+  express.static(path.join(__dirname, 'client'), {
+    maxAge: process.env.NODE_ENV === 'production' ? ONE_DAY * 1000 : 0,
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    },
+  })
+);
 
 app.get('/health', (req, res) => {
   const uptime = process.uptime();
@@ -258,7 +277,7 @@ app.get('/health', (req, res) => {
     uptime: Math.floor(uptime),
     roms: getCachedRomCount(),
     memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
-    node: process.version
+    node: process.version,
   });
 });
 
@@ -266,7 +285,7 @@ app.get('/api/config', (req, res) => {
   res.json({
     maxRomSize: MAX_ROM_SIZE,
     allowedExtensions,
-    version: '1.0.0'
+    version: '1.0.0',
   });
 });
 
@@ -276,7 +295,7 @@ app.get('/roms/list', (req, res) => {
   }
   fs.readdir(romsDir, (err, files) => {
     if (err) return res.status(500).json({ error: 'Unable to read ROMs directory' });
-    res.json(files.filter(file => isRomFile(file)));
+    res.json(files.filter((file) => isRomFile(file)));
   });
 });
 
@@ -293,16 +312,17 @@ app.get('/roms/file', (req, res) => {
     return res.status(404).json({ error: 'ROM not found' });
   }
   res.setHeader('Cache-Control', `public, max-age=${ONE_HOUR}`);
-  res.sendFile(filePath, err => {
+  res.sendFile(filePath, (err) => {
     if (err && !res.headersSent) res.status(404).json({ error: 'ROM read error' });
   });
 });
 
 app.post('/roms/upload', (req, res) => {
-  upload.single('rom')(req, res, err => {
+  upload.single('rom')(req, res, (err) => {
     if (err) {
       if (err instanceof multer.MulterError) {
-        if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File too large. Max 4MB.' });
+        if (err.code === 'LIMIT_FILE_SIZE')
+          return res.status(413).json({ error: 'File too large. Max 4MB.' });
         return res.status(400).json({ error: err.message });
       }
       return res.status(400).json({ error: err.message });
@@ -361,9 +381,10 @@ app.get('/roms/info', (req, res) => {
 app.get('/api/saves', (req, res) => {
   try {
     if (!fs.existsSync(savesDir)) return res.json([]);
-    const files = fs.readdirSync(savesDir)
-      .filter(f => f.endsWith('.json'))
-      .map(f => {
+    const files = fs
+      .readdirSync(savesDir)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => {
         const stat = fs.statSync(path.join(savesDir, f));
         return { name: f.replace(/\.json$/, ''), size: stat.size, modified: stat.mtimeMs };
       })
@@ -398,7 +419,11 @@ app.post('/api/saves/save', (req, res) => {
   if (!SAVE_PREFIX_PATTERN.test(name + '.json')) {
     return res.status(400).json({ error: 'Invalid save name format.' });
   }
-try { ensureSavesDir(); } catch (e) { console.error('[server] Failed to create saves directory:', e.message); }
+  try {
+    ensureSavesDir();
+  } catch (e) {
+    console.error('[server] Failed to create saves directory:', e.message);
+  }
   const filePath = getSavePath(name + '.json');
   if (!filePath) return res.status(400).json({ error: 'Invalid save path.' });
   try {
@@ -446,7 +471,7 @@ if (!fs.existsSync(romsDir)) {
   fs.mkdirSync(romsDir, { recursive: true });
 }
 
-const files = fs.existsSync(romsDir) ? fs.readdirSync(romsDir).filter(f => isRomFile(f)) : [];
+const files = fs.existsSync(romsDir) ? fs.readdirSync(romsDir).filter((f) => isRomFile(f)) : [];
 console.log(`[server] Found ${files.length} ROM(s) in ${romsDir}`);
 
 const server = app.listen(PORT, '0.0.0.0', () => {
@@ -474,7 +499,7 @@ function shutdown(signal) {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('uncaughtException', err => {
+process.on('uncaughtException', (err) => {
   console.error('[server] Uncaught exception:', err);
   process.exit(1);
 });

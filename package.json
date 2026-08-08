@@ -12,7 +12,7 @@
     "dashboard": "node dashboard.js",
     "stop": "lsof -ti :3000 | xargs -r kill -9 2>/dev/null || pkill -f 'src/server.js' 2>/dev/null || true",
     "lint": "eslint src/ dashboard.js install.js",
-    "format": "prettier --write \"src/**/*.js\" dashboard.js install.js *.sh",
+    "format": "prettier --write \"src/**/*.js\" dashboard.js install.js",
     "test": "node test/rom-utils.test.js"
   },
   "devDependencies": {

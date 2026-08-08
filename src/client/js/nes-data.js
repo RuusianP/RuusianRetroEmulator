@@ -1,5 +1,8 @@
-(function() {
-  var SUPPORTED_MAPPER_IDS = new Set([0,1,2,3,4,5,6,7,8,9,10,11,12,15,16,17,18,19,20,21,22,23,24,25,32,33,34,64,65,66,67,68,69,71,78,91]);
+(function () {
+  var SUPPORTED_MAPPER_IDS = new Set([
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 32, 33,
+    34, 64, 65, 66, 67, 68, 69, 71, 78, 91,
+  ]);
   var MAPPER_NAMES = {
     0: 'Direct Access / NROM',
     1: 'Nintendo MMC1',
@@ -36,22 +39,28 @@
     69: 'SunSoft5 FME-7 chip',
     71: 'Camerica chip',
     78: 'Irem 74HC161/32-based',
-    91: 'Pirate HK-SF3 chip'
+    91: 'Pirate HK-SF3 chip',
   };
 
   function checkNESMagic(bytes) {
-     return bytes.length >= 4 && bytes[0] === 0x4E && bytes[1] === 0x45 && bytes[2] === 0x53 && bytes[3] === 0x1A;
+    return (
+      bytes.length >= 4 &&
+      bytes[0] === 0x4e &&
+      bytes[1] === 0x45 &&
+      bytes[2] === 0x53 &&
+      bytes[3] === 0x1a
+    );
   }
 
   function parseNESHeader(buffer) {
     var bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
     if (!checkNESMagic(bytes) || bytes.length < 16) return null;
     return {
-      mapperType: (bytes[6] >> 4) | (bytes[7] & 0xF0),
+      mapperType: (bytes[6] >> 4) | (bytes[7] & 0xf0),
       mirroring: bytes[6] & 0x01 ? 'vertical' : 'horizontal',
       batteryRam: !!(bytes[6] & 0x02),
       trainer: !!(bytes[6] & 0x04),
-      fourScreen: !!(bytes[6] & 0x08)
+      fourScreen: !!(bytes[6] & 0x08),
     };
   }
 
@@ -66,7 +75,7 @@
       valid: true,
       supported: SUPPORTED_MAPPER_IDS.has(header.mapperType),
       mapperType: header.mapperType,
-      mapperName: getMapperName(header.mapperType)
+      mapperName: getMapperName(header.mapperType),
     };
   }
 
@@ -77,7 +86,7 @@
       checkNESMagic: checkNESMagic,
       parseNESHeader: parseNESHeader,
       getMapperName: getMapperName,
-      checkRomSupport: checkRomSupport
+      checkRomSupport: checkRomSupport,
     };
   } else {
     window.SUPPORTED_MAPPER_IDS = SUPPORTED_MAPPER_IDS;
