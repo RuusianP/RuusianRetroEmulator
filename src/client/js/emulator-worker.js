@@ -95,8 +95,6 @@ function cancelScheduledFrame() {
   frameTimer = null;
 }
 
-loadJSNES();
-
 function startFrameLoop() {
   if (!nes || !isRunning || isPaused || frameLooping) return;
   frameLooping = true;
@@ -388,9 +386,9 @@ function convertRGB24toRGBA(src, dst) {
   for (let i = 0; i < PIXEL_COUNT; i++) {
     const p = src[i];
     const off = i << 2;
-    dst[off] = p & 0xff;
+    dst[off] = (p >> 16) & 0xff;
     dst[off + 1] = (p >> 8) & 0xff;
-    dst[off + 2] = (p >> 16) & 0xff;
+    dst[off + 2] = p & 0xff;
     dst[off + 3] = 255;
   }
 }

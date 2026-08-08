@@ -3,7 +3,6 @@
 const assert = require('assert');
 const {
   SUPPORTED_MAPPER_IDS,
-  MAPPER_NAMES,
   checkNESMagic,
   parseNESHeader,
   getMapperName,
@@ -65,12 +64,50 @@ function testCheckRomSupport() {
   console.log('  checkRomSupport: PASS');
 }
 
+function testMapper23Name() {
+  assert.strictEqual(getMapperName(22), 'Konami VRC2a');
+  assert.strictEqual(getMapperName(23), 'Konami VRC2b');
+  console.log('  Mapper 23 name: PASS');
+}
+
+function testConvertRGB24toRGBA() {
+  // JSNES palette values are 0xRRGGBB (R in high byte, B in low byte)
+  // The worker's convertRGB24toRGBA must extract channels correctly
+  const PIXEL_COUNT = 256 * 240;
+  const src = new Uint32Array(PIXEL_COUNT);
+  // Color 0xB40000 = R:180, G:0, B:0 (red in 0xRRGGBB format)
+  src[0] = 0xb40000;
+  // Color 0x00005B = R:0, G:0, B:91 (blue in 0xRRGGBB format)
+  src[1] = 0x00005b;
+  // Color 0xFFFFFF = white
+  src[2] = 0xffffff;
+  const dst = new Uint8Array(PIXEL_COUNT * 4);
+  for (let i = 0; i < 3; i++) {
+    const p = src[i];
+    const off = i * 4;
+    dst[off] = (p >> 16) & 0xff;
+    dst[off + 1] = (p >> 8) & 0xff;
+    dst[off + 2] = p & 0xff;
+    dst[off + 3] = 255;
+  }
+  // Verify: red pixel should have R=180, B=0
+  assert.strictEqual(dst[0], 180, 'Red channel should be 180 for 0xB40000');
+  assert.strictEqual(dst[1], 0, 'Green channel should be 0 for 0xB40000');
+  assert.strictEqual(dst[2], 0, 'Blue channel should be 0 for 0xB40000');
+  // Verify: blue pixel should have R=0, B=91
+  assert.strictEqual(dst[4], 0, 'Red channel should be 0 for 0x00005B');
+  assert.strictEqual(dst[6], 91, 'Blue channel should be 91 for 0x00005B');
+  console.log('  convertRGB24toRGBA: PASS');
+}
+
 function main() {
   console.log('Running tests...');
   testNESMagic();
   testParseNESHeader();
   testMapperNames();
+  testMapper23Name();
   testCheckRomSupport();
+  testConvertRGB24toRGBA();
   console.log('All tests passed.');
 }
 
