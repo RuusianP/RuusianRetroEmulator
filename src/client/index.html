@@ -1729,6 +1729,7 @@
         }
         else if (type === 'error') {
           hideLoading();
+          if (pendingSaveAction) pendingSaveAction = null;
           setStatus(`Worker error: ${message}`, 'error');
           if (workerStateEl) workerStateEl.textContent = 'Error';
           isRunning = false;
