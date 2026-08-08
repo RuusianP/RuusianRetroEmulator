@@ -15,7 +15,7 @@ $InstallUrl = 'https://raw.githubusercontent.com/RuusianP/RuusianRetroEmulator/m
 
 function Write-Info($msg)  { Write-Host "  $msg" -ForegroundColor Green }
 function Write-Warn($msg)  { Write-Host "  $msg" -ForegroundColor Yellow }
-function Write-Fail($msg)  { Write-Host "  $msg" -ForegroundColor Red; exit 1 }
+function Write-Fail($msg)  { Write-Host "  $msg" -ForegroundColor Red; throw $msg }
 
 function Test-Command($name) {
   try { Get-Command $name -ErrorAction Stop | Out-Null; return $true }
