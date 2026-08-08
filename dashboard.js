@@ -226,12 +226,15 @@ function tailLogs(n) {
   }
 }
 
-function followLogs() {
+let logFollowInterval = null;
+
+function followLog() {
   ensureLogDir();
+  if (logFollowInterval) clearInterval(logFollowInterval);
   let pos = 0;
   try { pos = fs.statSync(LOG_FILE).size; } catch (e) { /* new */ }
   console.log(c('dim', 'Following logs (press q or Ctrl+C to stop)…'));
-  const iv = setInterval(() => {
+  logFollowInterval = setInterval(() => {
     try {
       const size = fs.statSync(LOG_FILE).size;
       if (size > pos) {
@@ -244,7 +247,13 @@ function followLogs() {
       }
     } catch (e) { /* ignore */ }
   }, 500);
-  iv.unref();
+  logFollowInterval.unref();
+}
+function stopLogFollow() {
+  if (logFollowInterval) {
+    clearInterval(logFollowInterval);
+    logFollowInterval = null;
+  }
 }
 
 function openBrowser() {
@@ -300,7 +309,7 @@ async function runCommand(args) {
     case 'roms': return listRoms();
     case 'saves': return listSaves();
     case 'logs': return tailLogs(parseInt(args[1], 10) || 40);
-    case 'logsfollow': followLogs(); return true;
+    case 'logsfollow': followLog(); return true;
     case 'open': openBrowser(); return true;
     case 'port': {
       if (!args[1]) { console.log(`Current port: ${state.port}`); return true; }
@@ -403,7 +412,7 @@ function buildMainMenu() {
       { index: 4, label: 'ℹ Status / health', run: async () => { await statusView(); await waitKey(); render(); } },
       { index: 5, label: '🎮 ROM manager', run: () => pushMenu(buildRomsMenu()) },
       { index: 6, label: '💾 Save states (server-side)', run: async () => { await listSaves(); await waitKey(); render(); } },
-      { index: 7, label: '📜 Live logs', run: () => { tailLogs(40); mode = 'logs'; console.log(c('dim', 'Press q or Ctrl+C to return…')); } },
+      { index: 7, label: '📜 Live logs', run: () => { tailLogs(40); followLog(); mode = 'logs'; console.log(c('dim', 'Press q or Ctrl+C to return…')); } },
       { index: 8, label: '🌐 Open in browser', run: async () => { openBrowser(); await sleep(300); render(); } },
       { index: 9, label: '🔧 Change port', run: () => pushMenu(buildPortMenu()) },
       { index: 0, label: 'Exit', run: () => quit(0) },
@@ -494,11 +503,12 @@ function onKeypress(str, key) {
     if (promptHandler) promptHandler(str, key);
     return;
   }
-  if (mode === 'logs') {
-    if (key && key.ctrl && key.name === 'c') { mode = 'menu'; quit(0); }
-    if ((key && key.name === 'q') || (key && key.name === 'return')) {
-      mode = 'menu';
-      render();
+   if (mode === 'logs') {
+     if (key && key.ctrl && key.name === 'c') { stopLogFollow(); mode = 'menu'; quit(0); }
+     if ((key && key.name === 'q') || (key && key.name === 'return')) {
+       stopLogFollow();
+       mode = 'menu';
+       render();
     }
     return;
   }
@@ -526,6 +536,7 @@ function onKeypress(str, key) {
 }
 
 function quit(code) {
+  stopLogFollow();
   try { process.stdin.setRawMode(false); } catch (e) { /* ignore */ }
   process.stdin.pause();
   process.exit(code);

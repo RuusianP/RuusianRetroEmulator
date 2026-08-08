@@ -1,5 +1,13 @@
 module.exports = [
   {
+    ignores: [
+      'node_modules/**',
+      'jsnes.min.js',
+      'src/client/js/jsnes.min.js',
+      'coverage/**',
+    ],
+  },
+  {
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',

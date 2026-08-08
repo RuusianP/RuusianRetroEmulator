@@ -1642,6 +1642,9 @@
       if (curToggle) curToggle.checked = false;
       stopGamepadPolling();
       stopHealthCheck();
+      if (crashTimer) clearTimeout(crashTimer);
+      crashTimer = null;
+      crashCounter = 0;
       if (liveIndicator) liveIndicator.style.display = 'none';
       if (viewportEl) viewportEl.classList.remove('running');
       hideHud();

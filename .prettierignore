@@ -1,0 +1,6 @@
+node_modules/
+jsnes.min.js
+src/client/js/jsnes.min.js
+coverage/
+logs/
+*.log
