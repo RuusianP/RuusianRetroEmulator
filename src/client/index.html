@@ -1296,9 +1296,10 @@
     let gamepadPollingId = null;
     let gamepadStates = {};
     let loadingLock = false;
-     const SAVE_PREFIX = 'nes-emulator-save:';
-     let saveKeysCache = null;
-     const heldKeys = new Set();
+    let romLoadPending = false;
+    const SAVE_PREFIX = 'nes-emulator-save:';
+    let saveKeysCache = null;
+    const heldKeys = new Set();
 
     function getSaveKeys() {
       if (saveKeysCache) return saveKeysCache;
@@ -1817,7 +1818,7 @@
            worker.postMessage({ type: 'setTurbo', data: { multiplier: currentSpeed } });
            if (godModeOn) worker.postMessage({ type: 'setGodMode', data: { enabled: true } });
            if (currencyModeOn) worker.postMessage({ type: 'setCurrencyMode', data: { enabled: true } });
-           if (currentRomData) {
+            if (currentRomData && !romLoadPending) {
              pendingRomName = currentRomName || pendingRomName;
              setStatus('Restoring ROM after recovery...', 'success');
              const transferBuffer = currentRomData.slice(0);
@@ -2369,7 +2370,9 @@
       currentRomName = name;
       currentRomData = arrayBuffer;
       const transferBuffer = currentRomData.slice(0);
+      romLoadPending = true;
       await waitForWorkerReady();
+      romLoadPending = false;
       worker.postMessage({ type: 'loadROM', data: { romData: transferBuffer } }, [transferBuffer]);
       createCanvas();
       if (workerStateEl) workerStateEl.textContent = 'Loading...';
