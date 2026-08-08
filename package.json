@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node src/server.js",
+    "dashboard": "node dashboard.js",
     "stop": "lsof -ti :3000 | xargs -r kill -9 2>/dev/null || pkill -f 'node server.js' 2>/dev/null || true"
   },
   "dependencies": {

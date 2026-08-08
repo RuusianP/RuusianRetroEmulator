@@ -13,7 +13,21 @@ The emulator runs the entire NES (CPU + PPU) inside a **Web Worker**, so gamepla
 - Optional CRT scanlines, turbo mode, cheats, and QoL cheats
 - Modern responsive glass-morphism dashboard UI
 
-## Getting Started
+## One-Line Installation
+
+Install the emulator and get a CLI dashboard (auto-detects the OS, installs Node.js and git if missing):
+
+| Platform | One-liner |
+|----------|-----------|
+| **Windows** (PowerShell) | `iwr -useb https://raw.githubusercontent.com/RuusianP/RuusianRetroEmulator/main/install.ps1 \| iex` |
+| **Linux / Android Termux / macOS** | `bash -c "$(curl -fsSL https://raw.githubusercontent.com/RuusianP/RuusianRetroEmulator/main/install.sh)"` |
+| **Any shell** (Node 18+ already installed) | `node -e "fetch('https://raw.githubusercontent.com/RuusianP/RuusianRetroEmulator/main/install.js').then(r=>r.text()).then(eval)"` |
+
+The installer detects the platform (Termux / Debian / RHEL / Arch / Alpine / macOS / Windows), provisions Node.js and git, clones the repository, runs `npm install`, and adds a `ruusian` launcher to your PATH. Afterward, just run **`ruusian`** to open the CLI dashboard (or `node dashboard.js`).
+
+> **Note:** Files must be committed and pushed to GitHub before the one-liners resolve. The installer targets `main` on `RuusianP/RuusianRetroEmulator` — update the URLs if you fork the repo.
+
+## Getting Started (manual)
 
 Requirements: **Node.js 18+**
 
@@ -30,6 +44,8 @@ http://localhost:3000
 ```
 
 In GitHub Codespaces / VS Code, open the server port through the **Ports** view. Stop the server with `CTRL+C`.
+
+For a friendlier management interface, run **`npm run dashboard`** instead of `npm start` (see below).
 
 > **Note:** The emulator needs **cross-origin isolation** (COOP/COEP headers, set automatically by the server) for the `SharedArrayBuffer` input path. If those headers are stripped by a proxy, the emulator automatically falls back to regular `postMessage` key events — input still works, just at slightly higher latency.
 
@@ -49,6 +65,36 @@ In GitHub Codespaces / VS Code, open the server port through the **Ports** view.
 - **QoL cheats** — God Mode and Currency Mode toggles that patch common NES RAM locations for lives, health, and currency
 - **Debug panel** — `?debug=1` overlays a live readout of emulator state (running, paused, shared-input, held keys)
 - **Performance** — Uses `OffscreenCanvas` if available and pre-allocated pixel buffers
+
+## CLI Dashboard
+
+`dashboard.js` is a terminal dashboard that replaces bare `npm start` for day-to-day management. Run it interactively:
+
+```bash
+npm run dashboard        # or:  node dashboard.js        (interactive menu)
+ruusian                  # if you ran the one-line installer
+```
+
+The interactive menu lets you start/stop/restart the server, check health, manage ROMs (list/upload/delete), list server-side saves, tail the live server log, open the emulator in your browser, and change the port.
+
+It also works as a one-shot command runner for automation:
+
+```bash
+node dashboard.js start        # start the server (managed, logs to logs/server.log)
+node dashboard.js stop         # stop a dashboard-managed server
+node dashboard.js restart      # restart it
+node dashboard.js status       # health + uptime + ROM count
+node dashboard.js roms         # list ROMs with mapper/support info
+node dashboard.js upload ./rom.nes
+node dashboard.js delete "Game.nes"
+node dashboard.js saves
+node dashboard.js logs 50      # last 50 log lines
+node dashboard.js logsfollow   # live tail (q / Ctrl+C to stop)
+node dashboard.js open         # open http://localhost:PORT in your browser
+node dashboard.js port 8080    # show or change the port
+```
+
+The dashboard persists its state (port, managed PID) in `.dashboard-state.json` and server output in `logs/server.log` (both git-ignored). A server started outside the dashboard (e.g. `npm start`) is detected as running but is not killed by `dashboard stop`.
 
 ## Controls
 
@@ -96,6 +142,13 @@ emulator/
 ├── README.md                  Project documentation
 ├── .gitignore                 Files and directories excluded from git
 ├── node_modules/              Installed dependencies (ignored)
+├── dashboard.js               CLI dashboard (interactive menu + command mode)
+├── install.js                 Cross-platform installer (OS detection, clone, launcher setup)
+├── install.sh                 One-line installer bootstrap for Linux / Termux / macOS
+├── install.ps1                One-line installer bootstrap for Windows (PowerShell)
+├── bin/
+│   ├── ruusian                `ruusian` launcher for POSIX shells
+│   └── ruusian.cmd            `ruusian` launcher for Windows
 ├── src/
 │   ├── server.js              Express server, API routes, and static file serving
 │   └── client/
@@ -164,7 +217,11 @@ npm install
 npm run dev
 ```
 
-The server serves static files live from `src/client/` (no build step), so frontend changes take effect on refresh.
+The server serves static files live from `src/client/` (no build step), so frontend changes take effect on refresh. For day-to-day management use `npm run dashboard` or `node dashboard.js` instead of `npm start`.
+
+### Releasing the one-line installer
+
+The installer files (`install.sh`, `install.ps1`, `install.js`) are fetched from the `main` branch on GitHub via raw URLs. After making changes, commit and push them so the one-liners pick up the new version.
 
 ## Notes
 

@@ -19,6 +19,10 @@ dist/
 Roms/
 saves/
 
+# CLI dashboard runtime files
+logs/
+.dashboard-state.json
+
 # Editor settings
 .vscode/
 .idea/
